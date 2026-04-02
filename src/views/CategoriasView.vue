@@ -39,7 +39,7 @@
       </li>
     </ul>
 
-    <!-- MODAL NUEVA CATEGORÍA -->
+    <!-- MODAL GUARDAR CATEGORÍA -->
     <div
       v-if="openModal"
       @click.self="cerrarModal"
@@ -52,10 +52,16 @@
         </h2>
         <!-- Input -->
         <input
+          ref="inputRef"
           v-model="nombre"
           placeholder="Nombre de la categoría"
+          maxlength="50"
           class="w-full border px-3 py-2 rounded mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          :class="errores.nombre ? 'border-red-500 focus:ring-red-500' : 'focus:ring-blue-500'"
         />
+        <p v-if="errores.nombre" class="text-sm text-red-500 mb-3">
+          {{ errores.nombre }}
+        </p>
         <!-- Acciones -->
         <div class="flex justify-end gap-2">
           <button @click="cerrarModal" class="px-4 py-2 rounded bg-gray-200 hover:bg-gray-300">
@@ -97,7 +103,9 @@
 <script setup lang="ts">
 import { ref, onMounted } from "vue";
 import { useCategoriasStore } from "@/modules/categorias/store";
+import { nextTick } from "vue";
 
+const errores = ref<{ nombre?: string }>({});
 const store = useCategoriasStore();
 
 const nombre = ref("");
@@ -106,17 +114,21 @@ const openDeleteModal = ref(false);
 const categoriaAEliminar = ref<number | null>(null);
 const modoEdicion = ref(false);
 const categoriaEditando = ref<number | null>(null);
+const inputRef = ref<HTMLInputElement | null>(null);
 
 // 🚀 cargar datos
 onMounted(() => {
   store.fetchCategorias();
 });
 
-const abrirCrear = () => {
+const abrirCrear = async () => {
+  errores.value = {};
   modoEdicion.value = false;
   categoriaEditando.value = null;
   nombre.value = "";
   openModal.value = true;
+  await nextTick(); // espero el render
+  inputRef.value?.focus();
 };
 
 // ❌ cerrar modal
@@ -136,12 +148,22 @@ const crear = async () => {
   cerrarModal();
 };
 
-const guardar = async () => {
-  if (!nombre.value.trim()) return;
+import { categoriaSchema } from "@/modules/categorias/schema";
 
-  if (modoEdicion.value && categoriaEditando.value) 
+const guardar = async () => {
+  errores.value = {};
+
+  const resultado = categoriaSchema.safeParse({ nombre: nombre.value });
+
+  if (!resultado.success) {
+    const fieldErrors = resultado.error.flatten().fieldErrors;
+    errores.value.nombre = fieldErrors.nombre?.[0];
+    return; // 🚫 NO va a la API
+  }
+
+  if (modoEdicion.value && categoriaEditando.value)
     await store.editCategoria(categoriaEditando.value, nombre.value);
-  else 
+  else
     await store.addCategoria(nombre.value);
 
   cerrarModal();
@@ -165,11 +187,13 @@ const confirmarEliminacion = async () => {
   cerrarConfirmacion();
 };
 
-const abrirEdicion = (categoria: any) => {
+const abrirEdicion = async (categoria: any) => {
   modoEdicion.value = true;
   categoriaEditando.value = categoria.id;
   nombre.value = categoria.nombre;
   openModal.value = true;
+  await nextTick();
+  inputRef.value?.focus();
 };
 
 

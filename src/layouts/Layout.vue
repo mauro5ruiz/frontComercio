@@ -6,8 +6,10 @@
       <router-view />
     </main>
   </div>
+  <Toast />
 </template>
 
 <script setup>
 import Sidebar from '@/components/Sidebar.vue'
+import Toast from '@/components/Toast.vue';
 </script>
