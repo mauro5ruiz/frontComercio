@@ -4,12 +4,12 @@ const routes = [
   {
     path: '/',
     component: () => import('@/layouts/Layout.vue'),
-    /*children: [
+    children: [
       {
         path: 'categorias',
-        component: () => import('@/views/categorias/CategoriasView.vue')
+        component: () => import('@/views/CategoriasView.vue')
       }
-    ]*/
+    ]
   }
 ]
 
