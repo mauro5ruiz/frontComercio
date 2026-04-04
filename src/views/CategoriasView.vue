@@ -14,8 +14,15 @@
 
     <!-- Lista -->
     <ul class="bg-white rounded shadow">
+      <div class="mb-4">
+        <input
+          v-model="search"
+          placeholder="Buscar categoría..."
+          class="w-full border px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+      </div>
       <li
-        v-for="c in store.categorias"
+        v-for="c in categoriasPaginadas"
         :key="c.id"
         class="flex justify-between items-center px-4 py-2 border-b hover:bg-gray-50"
       >
@@ -32,12 +39,33 @@
         </div>
       </li>
       <li
-        v-if="store.categorias.length === 0"
+        v-if="categoriasFiltradas.length === 0"
         class="text-center text-gray-400 py-4"
       >
         No hay categorías
       </li>
     </ul>
+    <div class="flex justify-center items-center gap-2 mt-4">
+      <button
+        @click="page--"
+        :disabled="page === 1"
+        class="px-3 py-1 bg-gray-200 rounded disabled:opacity-50"
+      >
+        ⬅
+      </button>
+
+      <span class="text-sm">
+        Página {{ page }} de {{ totalPaginas }}
+      </span>
+
+      <button
+        @click="page++"
+        :disabled="page === totalPaginas"
+        class="px-3 py-1 bg-gray-200 rounded disabled:opacity-50"
+      >
+        ➡
+      </button>
+    </div>
 
     <!-- MODAL GUARDAR CATEGORÍA -->
     <div
@@ -104,6 +132,11 @@
 import { ref, onMounted } from "vue";
 import { useCategoriasStore } from "@/modules/categorias/store";
 import { nextTick } from "vue";
+import { computed } from "vue";
+
+const search = ref("");
+const page = ref(1);
+const pageSize = 10; // cantidad por página
 
 const errores = ref<{ nombre?: string }>({});
 const store = useCategoriasStore();
@@ -119,6 +152,21 @@ const inputRef = ref<HTMLInputElement | null>(null);
 // 🚀 cargar datos
 onMounted(() => {
   store.fetchCategorias();
+});
+
+const categoriasFiltradas = computed(() => {
+  return store.categorias.filter(c =>
+    c.nombre.toLowerCase().includes(search.value.toLowerCase())
+  );
+});
+
+const totalPaginas = computed(() =>
+  Math.ceil(categoriasFiltradas.value.length / pageSize)
+);
+
+const categoriasPaginadas = computed(() => {
+  const start = (page.value - 1) * pageSize;
+  return categoriasFiltradas.value.slice(start, start + pageSize);
 });
 
 const abrirCrear = async () => {
@@ -153,6 +201,7 @@ import { categoriaSchema } from "@/modules/categorias/schema";
 const guardar = async () => {
   errores.value = {};
 
+  let rdoOperacion = false;
   const resultado = categoriaSchema.safeParse({ nombre: nombre.value });
 
   if (!resultado.success) {
@@ -162,11 +211,11 @@ const guardar = async () => {
   }
 
   if (modoEdicion.value && categoriaEditando.value)
-    await store.editCategoria(categoriaEditando.value, nombre.value);
+    rdoOperacion = await store.editCategoria(categoriaEditando.value, nombre.value);
   else
-    await store.addCategoria(nombre.value);
+    rdoOperacion = await store.addCategoria(nombre.value);
 
-  cerrarModal();
+  if (rdoOperacion) cerrarModal();
 };
 
 const abrirConfirmacion = (id: number) => {
@@ -182,9 +231,11 @@ const cerrarConfirmacion = () => {
 const confirmarEliminacion = async () => {
   if (!categoriaAEliminar.value) return;
 
-  await store.removeCategoria(categoriaAEliminar.value);
+  let rdoOperacion = false;
 
-  cerrarConfirmacion();
+  rdoOperacion = await store.removeCategoria(categoriaAEliminar.value);
+
+  if (rdoOperacion) cerrarConfirmacion();
 };
 
 const abrirEdicion = async (categoria: any) => {
