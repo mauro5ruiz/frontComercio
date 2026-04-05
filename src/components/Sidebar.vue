@@ -52,7 +52,7 @@
         <div v-show="openMenus.ventas" class="ml-5 mt-2 space-y-1">
           <router-link to="/ventas" class="block px-3 py-2 rounded-md hover:bg-gray-800">Ventas</router-link>
           <router-link to="/devoluciones-ventas" class="block px-3 py-2 rounded-md hover:bg-gray-800">Devoluciones</router-link>
-          <router-link to="/formas-pago" class="block px-3 py-2 rounded-md hover:bg-gray-800">Formas de Pago</router-link>
+          <router-link to="/formas-de-pago" class="block px-3 py-2 rounded-md hover:bg-gray-800">Formas de Pago</router-link>
         </div>
       </div>
 

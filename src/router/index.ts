@@ -8,6 +8,11 @@ const routes = [
       {
         path: 'categorias',
         component: () => import('@/views/CategoriasView.vue')
+      },
+      {
+        path: "formas-de-pago",
+        component: () => import('@/views/FormasDePagosView.vue')
+
       }
     ]
   }
