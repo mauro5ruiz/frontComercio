@@ -13,6 +13,11 @@ const routes = [
         path: "formas-de-pago",
         component: () => import('@/views/FormasDePagosView.vue')
 
+      },
+      {
+        path: "marcas",
+        component: () => import('@/views/MarcasView.vue')
+
       }
     ]
   }

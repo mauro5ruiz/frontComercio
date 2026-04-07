@@ -131,8 +131,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from "vue";
 import { useCategoriasStore } from "@/modules/categorias/store";
-import { nextTick } from "vue";
-import { computed } from "vue";
+import { nextTick, computed } from "vue";
 
 const search = ref("");
 const page = ref(1);
