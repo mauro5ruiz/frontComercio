@@ -18,6 +18,11 @@ const routes = [
         path: "marcas",
         component: () => import('@/views/MarcasView.vue')
 
+      },
+      {
+        path: "proveedores",
+        component: () => import('@/views/ProveedoresView.vue')
+
       }
     ]
   }

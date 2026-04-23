@@ -89,9 +89,9 @@
     <div
       v-if="openModal"
       @click.self="cerrarModal"
-      class="fixed inset-0 bg-black/20 flex items-center justify-center"
+      class="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-50"
     >
-      <div class="bg-white p-6 rounded w-full max-w-md">
+      <div class="bg-white rounded-lg shadow-lg w-full max-w-md p-6">
         <h2 class="text-lg font-bold mb-4">
           {{ modoEdicion ? "Editar Marca" : "Nueva Marca" }}
         </h2>
