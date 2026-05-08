@@ -12,22 +12,22 @@ const routes = [
       {
         path: "formas-de-pago",
         component: () => import('@/views/FormasDePagosView.vue')
-
       },
       {
         path: "marcas",
         component: () => import('@/views/MarcasView.vue')
-
       },
       {
         path: "proveedores",
         component: () => import('@/views/ProveedoresView.vue')
-
       },
       {
         path: "clientes",
         component: () => import('@/views/ClientesView.vue')
-
+      },
+      {
+        path: "productos",
+        component: () => import('@/views/ProductosView.vue')
       }
     ]
   }
