@@ -148,23 +148,28 @@
 
             <div class="space-y-3">
               <div>
-                <div class="flex items-center gap-3">
-                  <label class="w-40 text-sm font-medium text-gray-700">Nombre *</label>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Nombre *</label>
                   <input
                     v-model="nombre"
                     maxlength="90"
-                    class="flex-1 border px-3 py-2 rounded-md focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                    class="w-full border px-3 py-2 rounded-md focus:ring-2 focus:ring-blue-500 focus:outline-none"
                     :class="errores.nombre ? 'border-red-400' : 'border-gray-300'"
                   />
                 </div>
-                <p v-if="errores.nombre" class="text-xs text-red-500 mt-1 ml-[172px]">
+                <p v-if="errores.nombre" class="text-xs text-red-500 mt-1">
                   {{ errores.nombre }}
                 </p>
               </div>
 
-              <div class="flex items-center gap-3">
-                <label class="w-40 text-sm font-medium text-gray-700">Descripción</label>
-                <input v-model="descripcion" maxlength="250" class="flex-1 border border-gray-300 px-3 py-2 rounded-md" />
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Descripción</label>
+                <textarea
+                  v-model="descripcion"
+                  maxlength="250"
+                  rows="4"
+                  class="w-full border border-gray-300 px-3 py-2 rounded-md resize-y min-h-[120px]"
+                />
               </div>
 
               <div class="grid grid-cols-2 gap-3">

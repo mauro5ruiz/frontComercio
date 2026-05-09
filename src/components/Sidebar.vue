@@ -12,7 +12,7 @@
 
       <!-- Dashboard -->
       <router-link
-        to="/"
+        to="/dashboard"
         class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-800"
         :class="isActive('/') ? 'bg-gray-800 text-white' : ''"
       >

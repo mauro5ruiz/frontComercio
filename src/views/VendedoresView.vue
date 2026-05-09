@@ -251,25 +251,6 @@
             <div class="space-y-3">
               <div>
                 <div class="flex items-center gap-3">
-                  <label class="w-20 text-sm font-medium text-gray-700">Sucursal *</label>
-                  <select
-                    v-model.number="idSucursal"
-                    class="flex-1 border px-3 py-2 rounded-md"
-                    :class="errores.idSucursal ? 'border-red-400' : 'border-gray-300'"
-                  >
-                    <option :value="0">Seleccionar</option>
-                    <option v-for="s in sucursales" :key="s.id" :value="s.id">
-                      {{ s.nombre }}
-                    </option>
-                  </select>
-                </div>
-                <p v-if="errores.idSucursal" class="text-xs text-red-500 mt-1 ml-43">
-                  {{ errores.idSucursal }}
-                </p>
-              </div>
-
-              <div>
-                <div class="flex items-center gap-3">
                   <label class="w-10 text-sm font-medium text-gray-700">PIN *</label>
                   <input
                     v-model="pinHash"
