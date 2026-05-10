@@ -48,6 +48,10 @@ const routes = [
       {
         path: "ajustes-stock",
         component: () => import('@/views/AjustarStockView.vue')
+      },
+      {
+        path: "kardex",
+        component: () => import('@/views/KardexView.vue')
       }
     ]
   }
