@@ -44,6 +44,10 @@ const routes = [
       {
         path: "perdidas",
         component: () => import('@/views/PerdidasView.vue')
+      },
+      {
+        path: "ajustes-stock",
+        component: () => import('@/views/AjustarStockView.vue')
       }
     ]
   }
