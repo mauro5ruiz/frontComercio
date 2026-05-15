@@ -91,12 +91,17 @@
               <label class="text-sm text-gray-700">Nro. comprobante *</label>
               <input v-model="form.numeroComprobante" class="w-full border px-3 py-2 rounded-md" />
             </div>
-            <div>
+            <div ref="proveedorBox" class="relative">
               <label class="text-sm text-gray-700">Proveedor *</label>
-              <select v-model.number="form.idProveedor" class="w-full border px-3 py-2 rounded-md">
-                <option :value="0">Seleccionar</option>
-                <option v-for="p in proveedores" :key="p.id" :value="p.id">{{ p.razonSocial }}</option>
-              </select>
+              <div class="relative">
+                <input v-model="proveedorSearch" class="w-full border px-3 py-2 rounded-md pr-8" placeholder="Buscar proveedor" @focus="proveedorOpen = true" />
+                <button v-if="form.idProveedor > 0 || proveedorSearch" type="button" class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700 text-sm" @click="limpiarProveedor">×</button>
+              </div>
+              <div v-if="proveedorOpen && proveedoresFiltrados.length" class="absolute z-20 w-full mt-1 bg-white border rounded-md shadow max-h-44 overflow-y-auto">
+                <button v-for="p in proveedoresFiltrados" :key="p.id" type="button" class="w-full text-left px-3 py-2 hover:bg-gray-50 text-sm" @click="seleccionarProveedor(p)">
+                  {{ p.razonSocial }}
+                </button>
+              </div>
             </div>
           </div>
 
@@ -113,12 +118,17 @@
               </div>
             </div>
             <div class="grid grid-cols-1 md:grid-cols-5 gap-2 mb-3">
-              <select v-model.number="nuevoDetalle.idProducto" class="border px-3 py-2 rounded-md w-full md:col-span-2">
-                <option :value="0">Seleccionar producto</option>
-                <option v-for="prod in productos" :key="prod.id" :value="prod.id">
-                  {{ prod.nombre }}
-                </option>
-              </select>
+              <div ref="productoBox" class="relative md:col-span-2">
+                <div class="relative">
+                  <input v-model="productoSearch" class="border px-3 py-2 rounded-md w-full pr-8" placeholder="Buscar producto" @focus="productoOpen = true" />
+                  <button v-if="nuevoDetalle.idProducto > 0 || productoSearch" type="button" class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700 text-sm" @click="limpiarProducto">×</button>
+                </div>
+                <div v-if="productoOpen && productosFiltrados.length" class="absolute z-20 w-full mt-1 bg-white border rounded-md shadow max-h-52 overflow-y-auto">
+                  <button v-for="prod in productosFiltrados" :key="prod.id" type="button" class="w-full text-left px-3 py-2 hover:bg-gray-50 text-sm" @click="seleccionarProducto(prod)">
+                    {{ prod.nombre }}
+                  </button>
+                </div>
+              </div>
               <input
                 v-model.number="nuevoDetalle.cantidad"
                 type="number"
@@ -192,7 +202,13 @@
           <div class="border rounded-lg p-3">
             <div class="flex justify-between items-center mb-2">
               <h3 class="font-semibold">Pagos iniciales (opcional)</h3>
-              <button @click="agregarPago" class="text-blue-600 text-sm">+ Agregar pago</button>
+              <div class="flex items-center gap-3">
+                <label class="text-sm flex items-center gap-1">
+                  <input type="checkbox" v-model="pagarTodo" @change="togglePagarTodo" />
+                  Pagar todo
+                </label>
+                <button @click="agregarPago" class="text-blue-600 text-sm" :disabled="pagarTodo">+ Agregar pago</button>
+              </div>
             </div>
             <div class="space-y-2">
               <div v-for="(p, idx) in form.pagos" :key="idx" class="grid grid-cols-1 md:grid-cols-4 gap-2">
@@ -200,7 +216,22 @@
                   <option :value="0">Forma de pago</option>
                   <option v-for="f in formasDePago" :key="f.id" :value="f.id">{{ f.nombre }}</option>
                 </select>
-                <input v-model.number="p.importe" type="number" min="0.01" step="0.01" placeholder="Importe" class="border px-3 py-2 rounded-md" />
+                <input
+                  v-if="pagarTodo"
+                  :value="formatoMiles(p.importe)"
+                  type="text"
+                  class="border px-3 py-2 rounded-md bg-gray-50"
+                  readonly
+                />
+                <input
+                  v-else
+                  v-model.number="p.importe"
+                  type="number"
+                  min="0.01"
+                  step="0.01"
+                  placeholder="Importe"
+                  class="border px-3 py-2 rounded-md"
+                />
                 <input v-model="p.referencia" maxlength="120" placeholder="Referencia" class="border px-3 py-2 rounded-md" />
                 <button @click="quitarPago(idx)" class="bg-red-100 text-red-600 rounded-md px-3 py-2">Quitar</button>
               </div>
@@ -250,12 +281,17 @@
       <div class="bg-white rounded-lg shadow-lg w-full max-w-md p-6">
         <h2 class="text-lg font-bold mb-4">Pagar proveedor</h2>
         <div class="space-y-3">
-          <div>
+          <div ref="pagoProveedorBox" class="relative">
             <label class="text-sm text-gray-700">Proveedor *</label>
-            <select v-model.number="pagoProveedor.idProveedor" class="w-full border px-3 py-2 rounded-md">
-              <option :value="0">Seleccionar</option>
-              <option v-for="p in proveedores" :key="p.id" :value="p.id">{{ p.razonSocial }}</option>
-            </select>
+            <div class="relative">
+              <input v-model="pagoProveedorSearch" class="w-full border px-3 py-2 rounded-md pr-8" placeholder="Buscar proveedor" @focus="pagoProveedorOpen = true" />
+              <button v-if="pagoProveedor.idProveedor > 0 || pagoProveedorSearch" type="button" class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700 text-sm" @click="limpiarPagoProveedor">×</button>
+            </div>
+            <div v-if="pagoProveedorOpen && proveedoresFiltradosPago.length" class="absolute z-20 w-full mt-1 bg-white border rounded-md shadow max-h-44 overflow-y-auto">
+              <button v-for="p in proveedoresFiltradosPago" :key="p.id" type="button" class="w-full text-left px-3 py-2 hover:bg-gray-50 text-sm" @click="seleccionarProveedorPago(p)">
+                {{ p.razonSocial }}
+              </button>
+            </div>
           </div>
           <div>
             <label class="text-sm text-gray-700">Forma de pago *</label>
@@ -279,7 +315,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import { useNotificationStore } from "@/stores/notificaciones";
 
 interface ProveedorMock {
@@ -397,6 +433,15 @@ const openModal = ref(false);
 const openDetalleModal = ref(false);
 const openPagarProveedorModal = ref(false);
 const compraDetalle = ref<CompraMock | null>(null);
+const proveedorOpen = ref(false);
+const productoOpen = ref(false);
+const pagoProveedorOpen = ref(false);
+const proveedorSearch = ref("");
+const productoSearch = ref("");
+const pagoProveedorSearch = ref("");
+const proveedorBox = ref<HTMLElement | null>(null);
+const productoBox = ref<HTMLElement | null>(null);
+const pagoProveedorBox = ref<HTMLElement | null>(null);
 
 const form = ref({
   numeroComprobante: "",
@@ -418,6 +463,7 @@ const pagoProveedor = ref({
   importe: 0,
   idFormaPago: 0,
 });
+const pagarTodo = ref(false);
 
 const totalPaginas = computed(() => Math.max(1, Math.ceil(comprasFiltradas.value.length / pageSize)));
 const comprasPaginadas = computed(() => {
@@ -425,6 +471,9 @@ const comprasPaginadas = computed(() => {
   return comprasFiltradas.value.slice(start, start + pageSize);
 });
 const totalCalculado = computed(() => form.value.detalles.reduce((acc, d) => acc + (Number(d.cantidad) || 0) * (Number(d.precioUnitario) || 0), 0));
+const proveedoresFiltrados = computed(() => proveedores.value.filter(p => p.razonSocial.toLowerCase().includes(proveedorSearch.value.toLowerCase())).slice(0, 8));
+const productosFiltrados = computed(() => productos.value.filter(p => p.nombre.toLowerCase().includes(productoSearch.value.toLowerCase())).slice(0, 10));
+const proveedoresFiltradosPago = computed(() => proveedores.value.filter(p => p.razonSocial.toLowerCase().includes(pagoProveedorSearch.value.toLowerCase())).slice(0, 8));
 
 const buscarCompras = () => {
   if (!desde.value || !hasta.value) {
@@ -465,11 +514,34 @@ const abrirCrear = () => {
     pagos: [],
   };
   nuevoDetalle.value = { idProducto: 0, cantidad: 1, precioUnitario: 0 };
+  pagarTodo.value = false;
+  proveedorSearch.value = "";
+  productoSearch.value = "";
+  proveedorOpen.value = false;
+  productoOpen.value = false;
   openModal.value = true;
 };
 
 const cerrarModal = () => {
   openModal.value = false;
+};
+const seleccionarProveedor = (proveedor: ProveedorMock) => {
+  form.value.idProveedor = proveedor.id;
+  proveedorSearch.value = proveedor.razonSocial;
+  proveedorOpen.value = false;
+};
+const limpiarProveedor = () => {
+  form.value.idProveedor = 0;
+  proveedorSearch.value = "";
+};
+const seleccionarProducto = (producto: ProductoMock) => {
+  nuevoDetalle.value.idProducto = producto.id;
+  productoSearch.value = producto.nombre;
+  productoOpen.value = false;
+};
+const limpiarProducto = () => {
+  nuevoDetalle.value.idProducto = 0;
+  productoSearch.value = "";
 };
 
 const agregarDetalle = () => {
@@ -481,6 +553,7 @@ const agregarDetalle = () => {
 
   form.value.detalles.push({ idProducto, cantidad, precioUnitario });
   nuevoDetalle.value = { idProducto: 0, cantidad: 1, precioUnitario: 0 };
+  productoSearch.value = "";
 };
 const quitarDetalle = (idx: number) => form.value.detalles.splice(idx, 1);
 const normalizarDetalle = (idx: number) => {
@@ -499,6 +572,13 @@ const normalizarDetalle = (idx: number) => {
 };
 const agregarPago = () => form.value.pagos.push({ idFormaPago: 0, importe: 0, referencia: "" });
 const quitarPago = (idx: number) => form.value.pagos.splice(idx, 1);
+const togglePagarTodo = () => {
+  if (pagarTodo.value) {
+    form.value.pagos = [{ idFormaPago: 0, importe: totalCalculado.value, referencia: "Pago total" }];
+    return;
+  }
+  form.value.pagos = [];
+};
 
 const bloquearDecimal = (event: KeyboardEvent) => {
   if (event.key === "." || event.key === ",") {
@@ -511,6 +591,9 @@ const guardarCompra = () => {
   if (form.value.idProveedor <= 0) return notification.show("Debe seleccionar un proveedor", "error");
   if (form.value.idSucursal <= 0) return notification.show("La sucursal es obligatoria", "error");
   if (!form.value.detalles.length) return notification.show("Debe agregar al menos un detalle", "error");
+  if (pagarTodo.value && form.value.pagos.length) {
+    form.value.pagos[0].importe = totalCalculado.value;
+  }
 
   for (const d of form.value.detalles) {
     if (d.idProducto <= 0 || d.cantidad <= 0 || d.precioUnitario <= 0) {
@@ -581,11 +664,22 @@ const anular = (id: number) => {
 
 const abrirModalPagoProveedor = () => {
   pagoProveedor.value = { idProveedor: 0, idFormaPago: 0, importe: 0 };
+  pagoProveedorSearch.value = "";
+  pagoProveedorOpen.value = false;
   openPagarProveedorModal.value = true;
 };
 
 const cerrarModalPagoProveedor = () => {
   openPagarProveedorModal.value = false;
+};
+const seleccionarProveedorPago = (proveedor: ProveedorMock) => {
+  pagoProveedor.value.idProveedor = proveedor.id;
+  pagoProveedorSearch.value = proveedor.razonSocial;
+  pagoProveedorOpen.value = false;
+};
+const limpiarPagoProveedor = () => {
+  pagoProveedor.value.idProveedor = 0;
+  pagoProveedorSearch.value = "";
 };
 
 const guardarPagoProveedor = () => {
@@ -637,11 +731,27 @@ const nombreProducto = (idProducto: number) => {
 
 const money = (value: number) =>
   new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", minimumFractionDigits: 2 }).format(value || 0);
+const formatoMiles = (value: number) => new Intl.NumberFormat("es-AR", { maximumFractionDigits: 0 }).format(value || 0);
 
 const formatDate = (value: string) => {
   if (!value) return "-";
   return new Date(value).toLocaleDateString("es-AR");
 };
+
+const handleClickOutside = (event: MouseEvent) => {
+  const target = event.target as Node;
+  if (proveedorBox.value && !proveedorBox.value.contains(target)) proveedorOpen.value = false;
+  if (productoBox.value && !productoBox.value.contains(target)) productoOpen.value = false;
+  if (pagoProveedorBox.value && !pagoProveedorBox.value.contains(target)) pagoProveedorOpen.value = false;
+};
+
+onMounted(() => {
+  document.addEventListener("click", handleClickOutside);
+});
+
+onBeforeUnmount(() => {
+  document.removeEventListener("click", handleClickOutside);
+});
 
 buscarCompras();
 </script>
