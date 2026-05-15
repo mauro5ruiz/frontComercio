@@ -52,6 +52,10 @@ const routes = [
       {
         path: "kardex",
         component: () => import('@/views/KardexView.vue')
+      },
+      {
+        path: "compras",
+        component: () => import('@/views/ComprasView.vue')
       }
     ]
   }

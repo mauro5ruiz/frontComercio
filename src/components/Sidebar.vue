@@ -101,7 +101,6 @@
         </button>
 
         <div v-show="openMenus.config" class="ml-5 mt-2 space-y-1">
-          <router-link to="/sucursales" class="block px-3 py-2 rounded-md hover:bg-gray-800">Sucursales</router-link>
           <router-link to="/ajustes-stock" class="block px-3 py-2 rounded-md hover:bg-gray-800">Ajustes Stock</router-link>
         </div>
       </div>
