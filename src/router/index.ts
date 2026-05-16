@@ -2,9 +2,17 @@ import { createRouter, createWebHistory } from 'vue-router'
 
 const routes = [
   {
+    path: '/login',
+    component: () => import('@/views/LoginView.vue')
+  },
+  {
     path: '/',
     component: () => import('@/layouts/Layout.vue'),
     children: [
+      {
+        path: "",
+        redirect: "/dashboard"
+      },
       {
         path: 'categorias',
         component: () => import('@/views/CategoriasView.vue')
@@ -81,5 +89,21 @@ const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes,
 })
+
+router.beforeEach((to, _from, next) => {
+  const isAuth = localStorage.getItem("mock_auth") === "1";
+
+  if (to.path === "/login" && isAuth) {
+    next("/dashboard");
+    return;
+  }
+
+  if (to.path !== "/login" && !isAuth) {
+    next("/login");
+    return;
+  }
+
+  next();
+});
 
 export default router
