@@ -60,6 +60,10 @@ const routes = [
       {
         path: "ventas",
         component: () => import('@/views/VentasView.vue')
+      },
+      {
+        path: "devoluciones-ventas",
+        component: () => import('@/views/DevolucionesVentasView.vue')
       }
     ]
   }
