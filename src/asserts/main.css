@@ -1,1 +1,16 @@
 @import "tailwindcss";
+
+:root {
+  --module-bg-color: #f3f4f6;
+}
+
+.module-area .bg-white {
+  background-color: var(--module-bg-color) !important;
+}
+
+.module-area table,
+.module-area input,
+.module-area select,
+.module-area textarea {
+  background-color: var(--module-bg-color);
+}
