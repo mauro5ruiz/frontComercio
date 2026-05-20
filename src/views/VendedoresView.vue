@@ -7,7 +7,7 @@
         @click="abrirCrear"
         class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
       >
-        ➕ Nuevo vendedor
+        Nuevo vendedor
       </button>
     </div>
 
@@ -32,7 +32,6 @@
           <th class="p-2">Email</th>
           <th class="p-2">Teléfono</th>
           <th class="p-2">Activo</th>
-          <th class="p-2 text-center">Compras realizadas</th>
           <th class="p-2 text-right">Acciones</th>
         </tr>
       </thead>
@@ -51,14 +50,6 @@
           <td class="p-2">
             <span :class="v.activo ? 'text-green-600' : 'text-red-500'">
               {{ v.activo ? "Sí" : "No" }}
-            </span>
-          </td>
-
-          <td class="p-2 text-center">
-            <span
-              class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-700"
-            >
-              🛒 {{ v.comprasRealizadas }}
             </span>
           </td>
 
@@ -90,7 +81,7 @@
         </tr>
 
         <tr v-if="vendedoresFiltrados.length === 0">
-          <td colspan="7" class="text-center py-4 text-gray-400">
+          <td colspan="6" class="text-center py-4 text-gray-400">
             No hay vendedores
           </td>
         </tr>
@@ -103,7 +94,7 @@
         :disabled="page === 1"
         class="px-3 py-1 bg-gray-200 rounded disabled:opacity-50"
       >
-        ⬅
+        Anterior
       </button>
 
       <span class="text-sm">
@@ -115,7 +106,7 @@
         :disabled="page === totalPaginas"
         class="px-3 py-1 bg-gray-200 rounded disabled:opacity-50"
       >
-        ➡
+        Siguiente
       </button>
     </div>
 
@@ -245,30 +236,6 @@
 
           <div>
             <h3 class="text-xs font-semibold text-gray-500 mb-3 uppercase tracking-wide">
-              Configuración
-            </h3>
-
-            <div class="space-y-3">
-              <div>
-                <div class="flex items-center gap-3">
-                  <label class="w-10 text-sm font-medium text-gray-700">PIN *</label>
-                  <input
-                    v-model="pinHash"
-                    maxlength="20"
-                    type="password"
-                    class="flex-1 border px-3 py-2 rounded-md"
-                    :class="errores.pinHash ? 'border-red-400' : 'border-gray-300'"
-                  />
-                </div>
-                <p v-if="errores.pinHash" class="text-xs text-red-500 mt-1 ml-43">
-                  {{ errores.pinHash }}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div>
-            <h3 class="text-xs font-semibold text-gray-500 mb-3 uppercase tracking-wide">
               Información adicional
             </h3>
 
@@ -341,85 +308,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from "vue";
+import { ref, computed, watch, onMounted } from "vue";
+import { useNotificationStore } from "@/stores/notificaciones";
+import { useVendedoresStore } from "@/modules/vendedores/store";
+import type { Vendedor, CrearVendedorDto } from "@/modules/vendedores/types";
 
-interface VendedorMock {
-  id: number;
-  nombre: string;
-  apellido: string;
-  nroDni: string;
-  email?: string;
-  telefono?: string;
-  direccion?: string;
-  fechaNacimiento: string;
-  activo: boolean;
-  fechaAlta: string;
-  fechaEliminado?: string | null;
-  observaciones?: string;
-  pinHash: string;
-  idSucursal: number;
-  comprasRealizadas: number;
-}
-
-const sucursales = ref([
-  { id: 1, nombre: "Casa Central" },
-  { id: 2, nombre: "Sucursal Norte" },
-  { id: 3, nombre: "Sucursal Sur" },
-]);
-
-const vendedores = ref<VendedorMock[]>([
-  {
-    id: 1,
-    nombre: "Juan",
-    apellido: "Pérez",
-    nroDni: "30111222",
-    email: "juan@demo.com",
-    telefono: "2227-555555",
-    direccion: "Av. Alem 123",
-    fechaNacimiento: "1990-04-15",
-    activo: true,
-    fechaAlta: "2026-05-01",
-    fechaEliminado: null,
-    observaciones: "",
-    pinHash: "1234",
-    idSucursal: 1,
-    comprasRealizadas: 12,
-  },
-  {
-    id: 2,
-    nombre: "María",
-    apellido: "Gómez",
-    nroDni: "32555666",
-    email: "maria@demo.com",
-    telefono: "2227-444444",
-    direccion: "Belgrano 456",
-    fechaNacimiento: "1992-09-20",
-    activo: true,
-    fechaAlta: "2026-05-02",
-    fechaEliminado: null,
-    observaciones: "",
-    pinHash: "4567",
-    idSucursal: 2,
-    comprasRealizadas: 1,
-  },
-  {
-    id: 3,
-    nombre: "Carlos",
-    apellido: "López",
-    nroDni: "28999888",
-    email: "",
-    telefono: "2227-333333",
-    direccion: "",
-    fechaNacimiento: "1988-12-10",
-    activo: false,
-    fechaAlta: "2026-05-03",
-    fechaEliminado: "2026-05-06",
-    observaciones: "Vendedor dado de baja temporalmente",
-    pinHash: "9999",
-    idSucursal: 3,
-    comprasRealizadas: 6,
-  },
-]);
+const vendedoresStore = useVendedoresStore();
+const notification = useNotificationStore();
+const vendedores = computed(() => vendedoresStore.vendedores);
 
 const search = ref("");
 const incluirEliminados = ref(false);
@@ -437,9 +333,8 @@ const nroDni = ref("");
 const email = ref("");
 const telefono = ref("");
 const direccion = ref("");
+const fechaNacimiento = ref("");
 const observaciones = ref("");
-const pinHash = ref("");
-const idSucursal = ref(0);
 const activo = ref(true);
 
 const errores = ref<Record<string, string | undefined>>({});
@@ -447,12 +342,23 @@ const errores = ref<Record<string, string | undefined>>({});
 const page = ref(1);
 const pageSize = 7;
 
+const hoyLocal = () => {
+  const fecha = new Date();
+  fecha.setMinutes(fecha.getMinutes() - fecha.getTimezoneOffset());
+  return fecha.toISOString().split("T")[0];
+};
+
+const cargarVendedores = async () => {
+  await vendedoresStore.fetchVendedores(incluirEliminados.value);
+};
+
 watch(search, () => {
   page.value = 1;
 });
 
-watch(incluirEliminados, () => {
+watch(incluirEliminados, async () => {
   page.value = 1;
+  await cargarVendedores();
 });
 
 const vendedoresFiltrados = computed(() => {
@@ -463,7 +369,7 @@ const vendedoresFiltrados = computed(() => {
       v.nombre.toLowerCase().includes(texto) ||
       v.apellido.toLowerCase().includes(texto) ||
       v.nroDni.toLowerCase().includes(texto) ||
-      (v.email ?? "").toLowerCase().includes(texto);
+      String(v.email ?? "").toLowerCase().includes(texto);
 
     const incluir = incluirEliminados.value ? true : v.activo;
 
@@ -481,10 +387,6 @@ const vendedoresPaginados = computed(() => {
   return vendedoresFiltrados.value.slice(start, start + pageSize);
 });
 
-const obtenerSucursal = (id: number) => {
-  return sucursales.value.find((s) => s.id === id)?.nombre ?? "-";
-};
-
 const resetForm = () => {
   nombre.value = "";
   apellido.value = "";
@@ -494,8 +396,6 @@ const resetForm = () => {
   direccion.value = "";
   fechaNacimiento.value = hoyLocal();
   observaciones.value = "";
-  pinHash.value = "";
-  idSucursal.value = 0;
   activo.value = true;
   errores.value = {};
 };
@@ -507,24 +407,27 @@ const abrirCrear = () => {
   openModal.value = true;
 };
 
-const abrirEdicion = (v: VendedorMock) => {
+const abrirEdicion = async (v: Vendedor) => {
   modoEdicion.value = true;
   vendedorEditando.value = v.id;
   errores.value = {};
 
-  nombre.value = v.nombre;
-  apellido.value = v.apellido;
-  nroDni.value = v.nroDni;
-  email.value = v.email ?? "";
-  telefono.value = v.telefono ?? "";
-  direccion.value = v.direccion ?? "";
-  fechaNacimiento.value = v.fechaNacimiento;
-  observaciones.value = v.observaciones ?? "";
-  pinHash.value = v.pinHash;
-  idSucursal.value = v.idSucursal;
-  activo.value = v.activo;
+  try {
+    const data = await vendedoresStore.getVendedorPorId(v.id);
+    nombre.value = data.nombre ?? "";
+    apellido.value = data.apellido ?? "";
+    nroDni.value = data.nroDni ?? "";
+    email.value = data.email ?? "";
+    telefono.value = data.telefono ?? "";
+    direccion.value = data.direccion ?? "";
+    fechaNacimiento.value = data.fechaNacimiento ? String(data.fechaNacimiento).split("T")[0] : hoyLocal();
+    observaciones.value = data.observaciones ?? "";
+    activo.value = data.activo ?? true;
 
-  openModal.value = true;
+    openModal.value = true;
+  } catch (err: any) {
+    notification.show(err.response?.data?.error || "No se pudo cargar el vendedor", "error");
+  }
 };
 
 const cerrarModal = () => {
@@ -535,33 +438,22 @@ const cerrarModal = () => {
 const validar = () => {
   errores.value = {};
 
- const regexNombreApellido = /^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/;
+  const regexNombreApellido = /^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/;
 
-  if (!nombre.value.trim()) 
-    errores.value.nombre = "El nombre es obligatorio.";
-  else if (nombre.value.length < 2) 
-    errores.value.nombre = "El nombre debe tener al menos 2 caracteres.";
-  else if (nombre.value.length > 80) 
-    errores.value.nombre = "El nombre no puede superar los 80 caracteres.";
-  else if (!regexNombreApellido.test(nombre.value.trim())) 
-    errores.value.nombre = "El nombre no puede contener números ni caracteres especiales.";
+  if (!nombre.value.trim()) errores.value.nombre = "El nombre es obligatorio.";
+  else if (nombre.value.length < 2) errores.value.nombre = "El nombre debe tener al menos 2 caracteres.";
+  else if (nombre.value.length > 80) errores.value.nombre = "El nombre no puede superar los 80 caracteres.";
+  else if (!regexNombreApellido.test(nombre.value.trim())) errores.value.nombre = "El nombre no puede contener números ni caracteres especiales.";
 
-  if (!apellido.value.trim()) 
-    errores.value.apellido = "El apellido es obligatorio.";
-  else if (apellido.value.length < 2) 
-    errores.value.apellido = "El apellido debe tener al menos 2 caracteres.";
-  else if (apellido.value.length > 80) 
-    errores.value.apellido = "El apellido no puede superar los 80 caracteres.";
-  else if (!regexNombreApellido.test(apellido.value.trim())) 
-    errores.value.apellido = "El apellido no puede contener números ni caracteres especiales.";
+  if (!apellido.value.trim()) errores.value.apellido = "El apellido es obligatorio.";
+  else if (apellido.value.length < 2) errores.value.apellido = "El apellido debe tener al menos 2 caracteres.";
+  else if (apellido.value.length > 80) errores.value.apellido = "El apellido no puede superar los 80 caracteres.";
+  else if (!regexNombreApellido.test(apellido.value.trim())) errores.value.apellido = "El apellido no puede contener números ni caracteres especiales.";
 
   const dni = nroDni.value.trim();
-  if (!dni) 
-    errores.value.nroDni = "El DNI es obligatorio.";
-  else if (!/^\d+$/.test(dni)) 
-    errores.value.nroDni = "El DNI debe contener solo números.";
-  else if (dni.length < 7 || dni.length > 8) 
-    errores.value.nroDni = "El DNI debe tener entre 7 y 8 dígitos.";
+  if (!dni) errores.value.nroDni = "El DNI es obligatorio.";
+  else if (!/^\d+$/.test(dni)) errores.value.nroDni = "El DNI debe contener solo números.";
+  else if (dni.length < 7 || dni.length > 8) errores.value.nroDni = "El DNI debe tener entre 7 y 8 dígitos.";
 
   if (email.value && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.value)) {
     errores.value.email = "El email no tiene un formato válido.";
@@ -571,74 +463,34 @@ const validar = () => {
     errores.value.fechaNacimiento = "La fecha de nacimiento es obligatoria.";
   }
 
-  if (!pinHash.value.trim()) {
-    errores.value.pinHash = "El PIN es obligatorio.";
-  }
-
-  if (pinHash.value.length < 4) {
-    errores.value.pinHash = "El PIN debe tener al menos 4 caracteres.";
-  }
-
-  if (!idSucursal.value) {
-    errores.value.idSucursal = "La sucursal es obligatoria.";
-  }
-
   return Object.keys(errores.value).length === 0;
 };
 
-const hoyLocal = () => {
-  const fecha = new Date();
-  fecha.setMinutes(fecha.getMinutes() - fecha.getTimezoneOffset());
-
-  return fecha.toISOString().split("T")[0];
-};
-const fechaNacimiento = ref(hoyLocal());
-
-const guardar = () => {
+const guardar = async () => {
   if (!validar()) return;
 
+  const dto: CrearVendedorDto = {
+    nombre: nombre.value.trim(),
+    apellido: apellido.value.trim(),
+    nroDni: nroDni.value.trim(),
+    email: email.value.trim() || undefined,
+    telefono: telefono.value.trim() || undefined,
+    direccion: direccion.value.trim() || undefined,
+    fechaNacimiento: fechaNacimiento.value || null,
+    observaciones: observaciones.value.trim() || undefined,
+    activo: activo.value
+  };
+
+  let ok = false;
   if (modoEdicion.value && vendedorEditando.value) {
-    const index = vendedores.value.findIndex((v) => v.id === vendedorEditando.value);
-
-    if (index !== -1) {
-      vendedores.value[index] = {
-        ...vendedores.value[index],
-        nombre: nombre.value,
-        apellido: apellido.value,
-        nroDni: nroDni.value,
-        email: email.value || undefined,
-        telefono: telefono.value || undefined,
-        direccion: direccion.value || undefined,
-        fechaNacimiento: fechaNacimiento.value,
-        observaciones: observaciones.value || undefined,
-        pinHash: pinHash.value,
-        idSucursal: idSucursal.value,
-        activo: activo.value,
-        fechaEliminado: activo.value ? null : vendedores.value[index].fechaEliminado,
-      };
-    }
+    ok = await vendedoresStore.editVendedor(vendedorEditando.value, dto);
   } else {
-    const nuevoId = Math.max(...vendedores.value.map((v) => v.id), 0) + 1;
-
-    vendedores.value.unshift({
-      id: nuevoId,
-      nombre: nombre.value,
-      apellido: apellido.value,
-      nroDni: nroDni.value,
-      email: email.value || undefined,
-      telefono: telefono.value || undefined,
-      direccion: direccion.value || undefined,
-      fechaNacimiento: fechaNacimiento.value,
-      activo: activo.value,
-      fechaAlta: new Date().toISOString().substring(0, 10),
-      fechaEliminado: activo.value ? null : new Date().toISOString().substring(0, 10),
-      observaciones: observaciones.value || undefined,
-      pinHash: pinHash.value,
-      idSucursal: idSucursal.value,
-    });
+    ok = await vendedoresStore.addVendedor(dto);
   }
 
+  if (!ok) return;
   cerrarModal();
+  await cargarVendedores();
 };
 
 const abrirConfirmacion = (id: number) => {
@@ -651,28 +503,32 @@ const cerrarConfirmacion = () => {
   openDeleteModal.value = false;
 };
 
-const confirmarEliminacion = () => {
+const confirmarEliminacion = async () => {
   if (!vendedorAEliminar.value) return;
 
-  vendedores.value = vendedores.value.filter((v) => v.id !== vendedorAEliminar.value);
+  const ok = await vendedoresStore.removeVendedor(vendedorAEliminar.value);
+  if (!ok) return;
+
+  await cargarVendedores();
   cerrarConfirmacion();
 };
 
-const darDeBaja = (id: number) => {
-  const vendedor = vendedores.value.find((v) => v.id === id);
-
-  if (vendedor) {
-    vendedor.activo = false;
-    vendedor.fechaEliminado = new Date().toISOString().substring(0, 10);
-  }
+const darDeBaja = async (id: number) => {
+  const ok = await vendedoresStore.bajaVendedor(id);
+  if (!ok) return;
+  await cargarVendedores();
 };
 
-const restaurar = (id: number) => {
-  const vendedor = vendedores.value.find((v) => v.id === id);
-
-  if (vendedor) {
-    vendedor.activo = true;
-    vendedor.fechaEliminado = null;
-  }
+const restaurar = async (id: number) => {
+  const ok = await vendedoresStore.restoreVendedor(id);
+  if (!ok) return;
+  await cargarVendedores();
 };
+
+onMounted(async () => {
+  resetForm();
+  await cargarVendedores();
+});
 </script>
+
+
