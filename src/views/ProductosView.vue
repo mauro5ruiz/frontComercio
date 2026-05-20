@@ -2,19 +2,29 @@
   <div class="p-6">
     <h1 class="text-2xl font-bold mb-4">Productos</h1>
 
-    <div class="flex justify-end mb-4">
+    <div class="flex flex-wrap justify-end gap-2 mb-4">
+      <button
+        @click="openPreciosModal = true"
+        class="bg-indigo-500 text-white px-4 py-2 rounded hover:bg-indigo-600"
+      >
+        Actualización masiva
+      </button>
       <button
         @click="abrirCrear"
         class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
       >
-        ➕ Nuevo producto
+        Nuevo producto
       </button>
     </div>
 
-    <div class="flex items-center gap-2 mb-4">
+    <div class="flex items-center gap-4 mb-4">
       <input id="chkEliminados" type="checkbox" v-model="incluirEliminados" />
       <label for="chkEliminados" class="cursor-pointer">
         Incluir inactivos
+      </label>
+      <input id="chkBajoStock" type="checkbox" v-model="soloBajoStock" />
+      <label for="chkBajoStock" class="cursor-pointer">
+        Mostrar solo bajo en stock
       </label>
     </div>
 
@@ -56,8 +66,8 @@
           </td>
 
           <td class="p-2">{{ p.nombre }}</td>
-          <td class="p-2">{{ p.categoria }}</td>
-          <td class="p-2">{{ p.marca }}</td>
+          <td class="p-2">{{ nombreCategoria(p) }}</td>
+          <td class="p-2">{{ nombreMarca(p) }}</td>
           <td class="p-2">$ {{ p.precioVenta }}</td>
           <td class="p-2">
             <span :class="p.stockActual <= p.stockMinimo ? 'text-red-500 font-semibold' : ''">
@@ -71,12 +81,12 @@
           </td>
 
           <td class="p-2 text-right">
-            <button @click="abrirEdicion(p)" class="text-blue-500 mr-2">✏️</button>
-
+            <button @click="abrirEdicion(p)" class="text-blue-500 mr-2 cursor-pointer" title="Editar">✏️</button>
+            <button @click="abrirPrecioIndividual(p)" class="text-indigo-500 mr-2 cursor-pointer" title="Actualizar precio">💲</button>
             <button
               v-if="p.activo"
               @click="darDeBaja(p.id)"
-              class="text-yellow-500 mr-2"
+              class="text-yellow-500 mr-2 cursor-pointer"
               title="Dar de baja"
             >
               ⛔
@@ -85,13 +95,13 @@
             <button
               v-else
               @click="restaurar(p.id)"
-              class="text-green-500 mr-2"
+              class="text-green-500 mr-2 cursor-pointer"
               title="Restaurar"
             >
               ♻️
             </button>
 
-            <button @click="abrirConfirmacion(p.id)" class="text-red-500">
+            <button @click="abrirConfirmacion(p.id)" class="text-red-500 cursor-pointer" title="Eliminar">
               🗑️
             </button>
           </td>
@@ -111,7 +121,7 @@
         :disabled="page === 1"
         class="px-3 py-1 bg-gray-200 rounded disabled:opacity-50"
       >
-        ⬅
+        Anterior
       </button>
 
       <span class="text-sm">
@@ -123,14 +133,13 @@
         :disabled="page === totalPaginas"
         class="px-3 py-1 bg-gray-200 rounded disabled:opacity-50"
       >
-        ➡
+        Siguiente
       </button>
     </div>
 
     <!-- MODAL CREAR / EDITAR -->
     <div
       v-if="openModal"
-      @click.self="cerrarModal"
       class="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50"
     >
       <div class="bg-white rounded-xl w-full max-w-2xl shadow-xl max-h-[90vh] flex flex-col">
@@ -301,7 +310,7 @@
             <button
               v-if="preview"
               @click="quitarImagen"
-              class="text-red-500 text-sm mt-2 hover:underline"
+              class="text-red-500 text-sm mt-2"
             >
               Quitar imagen
             </button>
@@ -331,6 +340,104 @@
       </div>
     </div>
 
+    <!-- MODAL PRECIO INDIVIDUAL -->
+    <div
+      v-if="openPrecioModal"
+      class="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50"
+    >
+      <div class="bg-white rounded-lg shadow-lg w-full max-w-md p-6">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-lg font-bold">Actualizar precio</h2>
+          <button
+            @click="abrirAyudaPrecios('individual')"
+            class="w-8 h-8 rounded-full bg-cyan-50 text-cyan-700 border border-cyan-200 hover:bg-cyan-100 text-base font-bold leading-none flex items-center justify-center"
+            title="Ayuda sobre actualización de precios"
+            aria-label="Ayuda sobre actualización de precios"
+          >
+            ?
+          </button>
+        </div>
+        <p class="text-sm text-gray-600 mb-3">{{ precioProductoNombre }}</p>
+
+        <div class="space-y-3">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Tipo operación</label>
+            <select v-model.number="precioTipoOperacion" class="w-full border px-3 py-2 rounded-md">
+              <option :value="1">Fijo</option>
+              <option :value="2">Margen</option>
+              <option :value="3">Aumento</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Valor</label>
+            <input v-model.number="precioValor" type="number" min="0" class="w-full border px-3 py-2 rounded-md" />
+          </div>
+        </div>
+
+        <div class="flex justify-end gap-2 mt-5">
+          <button @click="cerrarPrecioIndividual" class="px-4 py-2 rounded bg-gray-200 hover:bg-gray-300">Cancelar</button>
+          <button @click="guardarPrecioIndividual" class="px-4 py-2 rounded bg-indigo-600 text-white hover:bg-indigo-700">Aplicar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL PRECIOS MASIVOS -->
+    <div
+      v-if="openPreciosModal"
+      class="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50"
+    >
+      <div class="bg-white rounded-lg shadow-lg w-full max-w-lg p-6">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-lg font-bold">Actualización masiva de precios</h2>
+          <button
+            @click="abrirAyudaPrecios('masiva')"
+            class="w-8 h-8 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200 hover:bg-indigo-100 text-base font-bold leading-none flex items-center justify-center"
+            title="Ayuda sobre actualización de precios"
+            aria-label="Ayuda sobre actualización de precios"
+          >
+            ?
+          </button>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Tipo operación</label>
+            <select v-model.number="masivoTipoOperacion" class="w-full border px-3 py-2 rounded-md">
+              <option :value="1">Fijo</option>
+              <option :value="2">Margen</option>
+              <option :value="3">Aumento</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Valor</label>
+            <input v-model.number="masivoValor" type="number" min="0" class="w-full border px-3 py-2 rounded-md" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Categoría</label>
+            <select v-model.number="masivoIdCategoria" class="w-full border px-3 py-2 rounded-md">
+              <option :value="0">Todas</option>
+              <option v-for="c in categorias" :key="c.id" :value="c.id">{{ c.nombre }}</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Marca</label>
+            <select v-model.number="masivoIdMarca" class="w-full border px-3 py-2 rounded-md">
+              <option :value="0">Todas</option>
+              <option v-for="m in marcas" :key="m.id" :value="m.id">{{ m.nombre }}</option>
+            </select>
+          </div>
+        </div>
+        <label class="flex items-center gap-2 text-sm mt-3">
+          <input type="checkbox" v-model="masivoSoloActivos" />
+          Solo activos
+        </label>
+
+        <div class="flex justify-end gap-2 mt-5">
+          <button @click="cerrarPreciosMasivos" class="px-4 py-2 rounded bg-gray-200 hover:bg-gray-300">Cancelar</button>
+          <button @click="guardarPreciosMasivos" class="px-4 py-2 rounded bg-indigo-600 text-white hover:bg-indigo-700">Aplicar a varios</button>
+        </div>
+      </div>
+    </div>
+
     <!-- MODAL DELETE -->
     <div
       v-if="openDeleteModal"
@@ -355,105 +462,80 @@
         </div>
       </div>
     </div>
+
+    <!-- MODAL AYUDA PRECIOS -->
+    <div
+      v-if="openAyudaPreciosModal"
+      @click.self="cerrarAyudaPrecios"
+      class="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50"
+    >
+      <div class="bg-white rounded-lg shadow-lg w-full max-w-md p-6">
+        <div class="flex items-start justify-between gap-3 mb-3">
+          <h2 class="text-lg font-bold text-gray-900">Ayuda: actualización de precios</h2>
+          <button
+            @click="cerrarAyudaPrecios"
+            class="text-gray-500 hover:text-gray-700 text-lg leading-none"
+            aria-label="Cerrar ayuda"
+          >
+            X
+          </button>
+        </div>
+        <p class="text-sm text-gray-600 mb-4">
+          {{ contextoAyudaPrecios === "masiva" ? "En masiva aplicás la regla a varios productos según filtros." : "En individual aplicás la regla solo al producto seleccionado." }}
+        </p>
+        <div class="space-y-2 text-sm text-gray-700">
+          <p><strong>Fijo:</strong> define el precio final exacto con el valor que ingresás.</p>
+          <p><strong>Margen:</strong> recalcula precio de venta usando un margen sobre el costo.</p>
+          <p><strong>Aumento:</strong> incrementa el precio actual en el valor indicado.</p>
+        </div>
+        <div class="mt-4 rounded-md bg-gray-50 border border-gray-200 p-3 text-sm text-gray-700">
+          <p class="font-semibold mb-1">Ejemplo rápido</p>
+          <p>Precio actual: <strong>$1.000</strong> | Costo: <strong>$700</strong></p>
+          <p><strong>Fijo (1200):</strong> nuevo precio = <strong>$1.200</strong></p>
+          <p><strong>Margen (30%):</strong> nuevo precio = <strong>$910</strong> (700 + 30%)</p>
+          <p><strong>Aumento (20%):</strong> nuevo precio = <strong>$1.200</strong></p>
+        </div>
+        <div class="flex justify-end mt-5">
+          <button @click="cerrarAyudaPrecios" class="px-4 py-2 rounded bg-indigo-600 text-white hover:bg-indigo-700">
+            Entendido
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from "vue";
+import { ref, computed, watch, onMounted } from "vue";
+import { useNotificationStore } from "@/stores/notificaciones";
+import { obtenerCategorias } from "@/modules/categorias/services";
+import { obtenerMarcas } from "@/modules/marcas/services";
+import type { Producto } from "@/modules/productos/types";
+import { useProductosStore } from "@/modules/productos/store";
 
-interface ProductoMock {
+interface CatalogoItem {
   id: number;
   nombre: string;
-  descripcion?: string;
-  codigo?: string;
-  codigoBarra?: string;
-  idCategoria: number;
-  categoria: string;
-  idMarca: number;
-  marca: string;
-  precioCompra: number;
-  precioVenta: number;
-  stockMinimo: number;
-  stockActual: number;
-  controlStock: boolean;
-  activo: boolean;
-  previewImagen?: string | null;
 }
 
-const categorias = ref([
-  { id: 1, nombre: "Bebidas" },
-  { id: 2, nombre: "Almacén" },
-  { id: 3, nombre: "Limpieza" },
-]);
-
-const marcas = ref([
-  { id: 1, nombre: "Coca Cola" },
-  { id: 2, nombre: "Arcor" },
-  { id: 3, nombre: "Ala" },
-]);
-
-const productos = ref<ProductoMock[]>([
-  {
-    id: 1,
-    nombre: "Coca Cola 2.25L",
-    descripcion: "Gaseosa retornable",
-    codigo: "COCA225",
-    codigoBarra: "7790895000997",
-    idCategoria: 1,
-    categoria: "Bebidas",
-    idMarca: 1,
-    marca: "Coca Cola",
-    precioCompra: 1200,
-    precioVenta: 1800,
-    stockMinimo: 5,
-    stockActual: 12,
-    controlStock: true,
-    activo: true,
-    previewImagen: null,
-  },
-  {
-    id: 2,
-    nombre: "Galletitas surtidas",
-    descripcion: "Paquete 400g",
-    codigo: "GAL400",
-    codigoBarra: "7790040123456",
-    idCategoria: 2,
-    categoria: "Almacén",
-    idMarca: 2,
-    marca: "Arcor",
-    precioCompra: 900,
-    precioVenta: 1300,
-    stockMinimo: 10,
-    stockActual: 4,
-    controlStock: true,
-    activo: true,
-    previewImagen: null,
-  },
-  {
-    id: 3,
-    nombre: "Jabón líquido",
-    descripcion: "Limpieza ropa",
-    codigo: "JABLIQ",
-    codigoBarra: "7790000111222",
-    idCategoria: 3,
-    categoria: "Limpieza",
-    idMarca: 3,
-    marca: "Ala",
-    precioCompra: 2500,
-    precioVenta: 3400,
-    stockMinimo: 3,
-    stockActual: 8,
-    controlStock: true,
-    activo: false,
-    previewImagen: null,
-  },
-]);
+const notification = useNotificationStore();
+const productosStore = useProductosStore();
+const categorias = ref<CatalogoItem[]>([]);
+const marcas = ref<CatalogoItem[]>([]);
+const productos = computed<Producto[]>(() =>
+  productosStore.productos.map((p) => ({ ...p, previewImagen: resolverImagenProducto(p) }))
+);
 
 const search = ref("");
 const incluirEliminados = ref(false);
+const soloBajoStock = ref(false);
 
 const openModal = ref(false);
 const openDeleteModal = ref(false);
+const openPrecioModal = ref(false);
+const openPreciosModal = ref(false);
+const openAyudaPreciosModal = ref(false);
+const contextoAyudaPrecios = ref<"individual" | "masiva">("masiva");
 
 const modoEdicion = ref(false);
 const productoEditando = ref<number | null>(null);
@@ -474,17 +556,72 @@ const activo = ref(true);
 
 const imagen = ref<File | null>(null);
 const preview = ref<string | null>(null);
+const eliminarImagen = ref(false);
 
 const errores = ref<Record<string, string | undefined>>({});
 
 const page = ref(1);
 const pageSize = 7;
+const baseFilesUrl = String(import.meta.env.VITE_FILES_URL || "").replace(/\/$/, "");
+const precioProductoId = ref<number | null>(null);
+const precioProductoNombre = ref("");
+const precioProductoCompra = ref(0);
+const precioValor = ref(0);
+const precioTipoOperacion = ref(3);
+const masivoValor = ref(0);
+const masivoTipoOperacion = ref(3);
+const masivoIdCategoria = ref(0);
+const masivoIdMarca = ref(0);
+const masivoSoloActivos = ref(true);
+
+const resolverImagenProducto = (p: any): string | null => {
+  const raw =
+    p?.previewImagen ??
+    p?.imagen ??
+    p?.imagenUrl ??
+    p?.urlImagen ??
+    p?.rutaImagen ??
+    null;
+
+  if (!raw || typeof raw !== "string") return null;
+  if (raw.startsWith("http://") || raw.startsWith("https://") || raw.startsWith("data:")) return raw;
+  if (!baseFilesUrl) return raw;
+  return raw.startsWith("/") ? `${baseFilesUrl}${raw}` : `${baseFilesUrl}/${raw}`;
+};
+
+const cargarCatalogos = async () => {
+  const [categoriasResult, marcasResult] = await Promise.allSettled([
+    obtenerCategorias(),
+    obtenerMarcas()
+  ]);
+
+  if (categoriasResult.status === "fulfilled") {
+    categorias.value = categoriasResult.value;
+  } else {
+    categorias.value = [];
+  }
+
+  if (marcasResult.status === "fulfilled") {
+    marcas.value = marcasResult.value.map((m) => ({ id: m.id, nombre: m.nombre }));
+  } else {
+    marcas.value = [];
+  }
+};
+
+const cargarProductos = async () => {
+  await productosStore.fetchProductos(incluirEliminados.value);
+};
 
 watch(search, () => {
   page.value = 1;
 });
 
-watch(incluirEliminados, () => {
+watch(incluirEliminados, async () => {
+  page.value = 1;
+  await cargarProductos();
+});
+
+watch(soloBajoStock, () => {
   page.value = 1;
 });
 
@@ -499,8 +636,9 @@ const productosFiltrados = computed(() => {
       (p.codigo ?? "").toLowerCase().includes(texto);
 
     const incluir = incluirEliminados.value ? true : p.activo;
+    const coincideBajoStock = !soloBajoStock.value || p.stockActual <= p.stockMinimo;
 
-    return coincideBusqueda && incluir;
+    return coincideBusqueda && incluir && coincideBajoStock;
   });
 });
 
@@ -508,6 +646,18 @@ const totalPaginas = computed(() => {
   const total = Math.ceil(productosFiltrados.value.length / pageSize);
   return total === 0 ? 1 : total;
 });
+
+const nombreCategoria = (p: Producto) => {
+  if (p.categoria && p.categoria.trim()) return p.categoria;
+  const id = Number((p as any).idCategoria ?? 0);
+  return categorias.value.find((c) => c.id === id)?.nombre ?? "-";
+};
+
+const nombreMarca = (p: Producto) => {
+  if (p.marca && p.marca.trim()) return p.marca;
+  const id = Number((p as any).idMarca ?? 0);
+  return marcas.value.find((m) => m.id === id)?.nombre ?? "-";
+};
 
 const productosPaginados = computed(() => {
   const start = (page.value - 1) * pageSize;
@@ -529,6 +679,7 @@ const resetForm = () => {
   activo.value = true;
   imagen.value = null;
   preview.value = null;
+  eliminarImagen.value = false;
   errores.value = {};
 };
 
@@ -539,27 +690,33 @@ const abrirCrear = () => {
   openModal.value = true;
 };
 
-const abrirEdicion = (p: ProductoMock) => {
+const abrirEdicion = async (p: Producto) => {
   modoEdicion.value = true;
   productoEditando.value = p.id;
   errores.value = {};
 
-  nombre.value = p.nombre;
-  descripcion.value = p.descripcion ?? "";
-  codigo.value = p.codigo ?? "";
-  codigoBarra.value = p.codigoBarra ?? "";
-  idCategoria.value = p.idCategoria;
-  idMarca.value = p.idMarca;
-  precioCompra.value = p.precioCompra;
-  precioVenta.value = p.precioVenta;
-  stockMinimo.value = p.stockMinimo;
-  stockInicial.value = p.stockActual;
-  controlStock.value = p.controlStock;
-  activo.value = p.activo;
-  preview.value = p.previewImagen ?? null;
-  imagen.value = null;
+  try {
+    const data = await productosStore.getProductoPorId(p.id);
+    nombre.value = data.nombre ?? "";
+    descripcion.value = data.descripcion ?? "";
+    codigo.value = data.codigo ?? "";
+    codigoBarra.value = data.codigoBarra ?? "";
+    idCategoria.value = data.idCategoria ?? 0;
+    idMarca.value = data.idMarca ?? 0;
+    precioCompra.value = data.precioCompra ?? 0;
+    precioVenta.value = data.precioVenta ?? 0;
+    stockMinimo.value = data.stockMinimo ?? 0;
+    stockInicial.value = data.stockActual ?? 0;
+    controlStock.value = data.controlStock ?? true;
+    activo.value = data.activo ?? true;
+    preview.value = resolverImagenProducto(data);
+    imagen.value = null;
+    eliminarImagen.value = false;
 
-  openModal.value = true;
+    openModal.value = true;
+  } catch (err: any) {
+    notification.show(err.response?.data?.error || "No se pudo cargar el producto", "error");
+  }
 };
 
 const cerrarModal = () => {
@@ -567,130 +724,176 @@ const cerrarModal = () => {
   errores.value = {};
 };
 
+const abrirPrecioIndividual = (p: Producto) => {
+  precioProductoId.value = p.id;
+  precioProductoNombre.value = p.nombre;
+  precioProductoCompra.value = Number(p.precioCompra ?? 0);
+  precioValor.value = 0;
+  precioTipoOperacion.value = 3;
+  openPrecioModal.value = true;
+};
+
+const resetPrecioIndividual = () => {
+  precioProductoId.value = null;
+  precioProductoNombre.value = "";
+  precioProductoCompra.value = 0;
+  precioValor.value = 0;
+  precioTipoOperacion.value = 3;
+};
+
+const cerrarPrecioIndividual = () => {
+  openPrecioModal.value = false;
+  resetPrecioIndividual();
+};
+
+const resetPreciosMasivos = () => {
+  masivoValor.value = 0;
+  masivoTipoOperacion.value = 3;
+  masivoIdCategoria.value = 0;
+  masivoIdMarca.value = 0;
+  masivoSoloActivos.value = true;
+};
+
+const cerrarPreciosMasivos = () => {
+  openPreciosModal.value = false;
+  resetPreciosMasivos();
+};
+
+const refrescarSegunModo = async () => {
+  await cargarProductos();
+};
+
+const abrirAyudaPrecios = (contexto: "individual" | "masiva") => {
+  contextoAyudaPrecios.value = contexto;
+  openAyudaPreciosModal.value = true;
+};
+
+const cerrarAyudaPrecios = () => {
+  openAyudaPreciosModal.value = false;
+};
+
+const guardarPrecioIndividual = async () => {
+  if (!precioProductoId.value) return;
+  if (precioValor.value < 0) {
+    notification.show("El valor no puede ser negativo", "error");
+    return;
+  }
+  if (precioTipoOperacion.value === 1 && precioValor.value <= precioProductoCompra.value) {
+    notification.show(
+      `Para precio fijo, el precio de venta debe ser mayor al precio de compra ($${precioProductoCompra.value}).`,
+      "error"
+    );
+    return;
+  }
+
+  const ok = await productosStore.patchPrecioIndividual(precioProductoId.value, {
+    valor: precioValor.value,
+    tipoOperacion: precioTipoOperacion.value
+  });
+  if (!ok) return;
+  cerrarPrecioIndividual();
+  await refrescarSegunModo();
+};
+
+const guardarPreciosMasivos = async () => {
+  if (masivoValor.value < 0) {
+    notification.show("El valor no puede ser negativo", "error");
+    return;
+  }
+  if (masivoTipoOperacion.value === 1) {
+    const productosObjetivo = productos.value.filter((p) => {
+      const coincideCategoria = !masivoIdCategoria.value || Number((p as any).idCategoria ?? 0) === masivoIdCategoria.value;
+      const coincideMarca = !masivoIdMarca.value || Number((p as any).idMarca ?? 0) === masivoIdMarca.value;
+      const coincideActivo = masivoSoloActivos.value ? p.activo : true;
+      return coincideCategoria && coincideMarca && coincideActivo;
+    });
+
+    const invalidos = productosObjetivo.filter((p) => masivoValor.value <= Number(p.precioCompra ?? 0));
+    if (invalidos.length > 0) {
+      notification.show(
+        `Precio fijo inválido: debe ser mayor al precio de compra en ${invalidos.length} producto(s) afectado(s).`,
+        "error"
+      );
+      return;
+    }
+  }
+
+  const r = await productosStore.patchPreciosMasivos({
+    valor: masivoValor.value,
+    tipoOperacion: masivoTipoOperacion.value,
+    idCategoria: masivoIdCategoria.value || null,
+    idMarca: masivoIdMarca.value || null,
+    soloActivos: masivoSoloActivos.value
+  });
+  if (!r.ok) return;
+  cerrarPreciosMasivos();
+  await refrescarSegunModo();
+};
+
 const validar = () => {
   errores.value = {};
 
-  if (!nombre.value.trim()) {
-    errores.value.nombre = "El nombre es obligatorio.";
-  }
-
-  if (nombre.value.length > 90) {
-    errores.value.nombre = "El nombre no puede superar los 90 caracteres.";
-  }
-
-  if (descripcion.value.length > 250) {
-    errores.value.descripcion = "La descripción no puede superar los 250 caracteres.";
-  }
-
-  if (codigo.value.length > 30) {
-    errores.value.codigo = "El código no puede superar los 30 caracteres.";
-  }
-
-  if (codigoBarra.value.length > 80) {
-    errores.value.codigoBarra = "El código de barra no puede superar los 80 caracteres.";
-  }
-
-  if (!idCategoria.value) {
-    errores.value.idCategoria = "La categoría es obligatoria.";
-  }
-
-  if (!idMarca.value) {
-    errores.value.idMarca = "La marca es obligatoria.";
-  }
-
-  if (precioCompra.value <= 0) {
-    errores.value.precioCompra = "El precio de compra debe ser mayor a 0.";
-  }
-
-  if (precioVenta.value <= 0) {
-    errores.value.precioVenta = "El precio de venta debe ser mayor a 0.";
-  }
-
-  if (precioVenta.value < precioCompra.value) {
-    errores.value.precioVenta = "El precio de venta no puede ser menor al precio de compra.";
-  }
-
-  if (stockMinimo.value < 0) {
-    errores.value.stockMinimo = "El stock mínimo no puede ser negativo.";
-  }
-
-  if (stockInicial.value <= 0) {
-    errores.value.stockInicial = "El stock inicial debe ser mayor a 0.";
-  }
+  if (!nombre.value.trim()) errores.value.nombre = "El nombre es obligatorio.";
+  if (nombre.value.length > 90) errores.value.nombre = "El nombre no puede superar los 90 caracteres.";
+  if (descripcion.value.length > 250) errores.value.descripcion = "La descripcion no puede superar los 250 caracteres.";
+  if (codigo.value.length > 30) errores.value.codigo = "El codigo no puede superar los 30 caracteres.";
+  if (codigoBarra.value.length > 80) errores.value.codigoBarra = "El codigo de barra no puede superar los 80 caracteres.";
+  if (!idCategoria.value) errores.value.idCategoria = "La categoria es obligatoria.";
+  if (!idMarca.value) errores.value.idMarca = "La marca es obligatoria.";
+  if (precioCompra.value < 0) errores.value.precioCompra = "El precio de compra no puede ser negativo.";
+  if (precioVenta.value < 0) errores.value.precioVenta = "El precio de venta no puede ser negativo.";
+  if (stockMinimo.value < 0) errores.value.stockMinimo = "El stock minimo no puede ser negativo.";
+  if (!modoEdicion.value && stockInicial.value < 0) errores.value.stockInicial = "El stock inicial no puede ser negativo.";
 
   return Object.keys(errores.value).length === 0;
 };
 
-const guardar = () => {
+const guardar = async () => {
   if (!validar()) return;
 
-  const categoria = categorias.value.find((c) => c.id === idCategoria.value);
-  const marca = marcas.value.find((m) => m.id === idMarca.value);
+  const formData = new FormData();
+  formData.append("nombre", nombre.value);
+  formData.append("descripcion", descripcion.value);
+  formData.append("codigo", codigo.value);
+  formData.append("codigoBarra", codigoBarra.value);
+  formData.append("idCategoria", String(idCategoria.value));
+  formData.append("idMarca", String(idMarca.value));
+  formData.append("precioCompra", String(precioCompra.value));
+  formData.append("precioVenta", String(precioVenta.value));
+  formData.append("activo", String(activo.value));
+  formData.append("controlStock", String(controlStock.value));
+  formData.append("stockMinimo", String(stockMinimo.value));
+  formData.append("eliminarImagen", String(eliminarImagen.value));
 
-  if (!categoria || !marca) return;
+  if (!modoEdicion.value) formData.append("stockInicial", String(stockInicial.value));
+  if (imagen.value) formData.append("imagen", imagen.value);
 
+  let ok = false;
   if (modoEdicion.value && productoEditando.value) {
-    const index = productos.value.findIndex((p) => p.id === productoEditando.value);
-
-    if (index !== -1) {
-      productos.value[index] = {
-        ...productos.value[index],
-        nombre: nombre.value,
-        descripcion: descripcion.value || undefined,
-        codigo: codigo.value || undefined,
-        codigoBarra: codigoBarra.value || undefined,
-        idCategoria: idCategoria.value,
-        categoria: categoria.nombre,
-        idMarca: idMarca.value,
-        marca: marca.nombre,
-        precioCompra: precioCompra.value,
-        precioVenta: precioVenta.value,
-        stockMinimo: stockMinimo.value,
-        stockActual: stockInicial.value,
-        controlStock: controlStock.value,
-        activo: activo.value,
-        previewImagen: preview.value,
-      };
-    }
+    ok = await productosStore.editProducto(productoEditando.value, formData);
   } else {
-    const nuevoId = Math.max(...productos.value.map((p) => p.id), 0) + 1;
-
-    productos.value.unshift({
-      id: nuevoId,
-      nombre: nombre.value,
-      descripcion: descripcion.value || undefined,
-      codigo: codigo.value || undefined,
-      codigoBarra: codigoBarra.value || undefined,
-      idCategoria: idCategoria.value,
-      categoria: categoria.nombre,
-      idMarca: idMarca.value,
-      marca: marca.nombre,
-      precioCompra: precioCompra.value,
-      precioVenta: precioVenta.value,
-      stockMinimo: stockMinimo.value,
-      stockActual: stockInicial.value,
-      controlStock: controlStock.value,
-      activo: activo.value,
-      previewImagen: preview.value,
-    });
+    ok = await productosStore.addProducto(formData);
   }
+  if (!ok) return;
 
   cerrarModal();
+  await refrescarSegunModo();
 };
 
 const onFileChange = (e: Event) => {
   const input = e.target as HTMLInputElement;
   const file = input.files?.[0];
-
   if (!file) return;
 
   imagen.value = file;
   preview.value = URL.createObjectURL(file);
+  eliminarImagen.value = false;
 };
 
 const quitarImagen = () => {
   imagen.value = null;
   preview.value = null;
+  eliminarImagen.value = true;
 };
 
 const abrirConfirmacion = (id: number) => {
@@ -703,20 +906,35 @@ const cerrarConfirmacion = () => {
   openDeleteModal.value = false;
 };
 
-const confirmarEliminacion = () => {
+const confirmarEliminacion = async () => {
   if (!productoAEliminar.value) return;
 
-  productos.value = productos.value.filter((p) => p.id !== productoAEliminar.value);
+  const ok = await productosStore.removeProducto(productoAEliminar.value);
+  if (!ok) return;
+  await refrescarSegunModo();
   cerrarConfirmacion();
 };
 
-const darDeBaja = (id: number) => {
-  const producto = productos.value.find((p) => p.id === id);
-  if (producto) producto.activo = false;
+const darDeBaja = async (id: number) => {
+  const ok = await productosStore.bajaProducto(id);
+  if (!ok) return;
+  await refrescarSegunModo();
 };
 
-const restaurar = (id: number) => {
-  const producto = productos.value.find((p) => p.id === id);
-  if (producto) producto.activo = true;
+const restaurar = async (id: number) => {
+  const ok = await productosStore.restoreProducto(id);
+  if (!ok) return;
+  await refrescarSegunModo();
 };
+
+onMounted(async () => {
+  try {
+    await cargarCatalogos();
+    await refrescarSegunModo();
+  } catch {
+    notification.show("No se pudo conectar con la API. Verificá backend y VITE_API_URL.", "error");
+  }
+});
 </script>
+
+

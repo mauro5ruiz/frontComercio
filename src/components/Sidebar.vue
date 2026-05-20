@@ -1,28 +1,41 @@
-<template>
-  <aside class="w-64 h-screen flex flex-col" :style="{ backgroundColor: prefs.menuColor, color: prefs.menuTextColor, '--menu-hover-color': prefs.menuHoverColor }">
+﻿<template>
+  <aside
+    class="w-64 h-screen flex flex-col"
+    :style="{ backgroundColor: prefs.menuColor, color: prefs.menuTextColor, '--menu-hover-color': prefs.menuHoverColor }"
+  >
     <div class="p-4 text-lg font-bold border-b border-gray-700 flex items-center gap-2">
       <img v-if="prefs.logoDataUrl" :src="prefs.logoDataUrl" alt="Logo" class="h-9 w-9 object-contain rounded" />
-      <span v-else class="text-yellow-400">🐕</span>
+      <span v-else class="text-yellow-400">🐺</span>
       <span class="truncate">{{ prefs.appTitle }}</span>
     </div>
 
-    <nav class="flex-1 p-3 space-y-2 overflow-y-auto">
-      <router-link to="/dashboard" class="menu-item flex items-center gap-3 px-3 py-2 rounded-lg" :class="isActive('/dashboard') ? 'menu-item-active text-white' : ''">Dashboard</router-link>
+    <nav class="menu-scroll flex-1 p-3 space-y-2 overflow-y-auto overflow-x-hidden">
+      <router-link
+        to="/dashboard"
+        class="menu-item flex items-center gap-3 px-3 py-2 rounded-lg"
+        :class="isActive('/dashboard') ? 'menu-item-active text-white' : ''"
+      >Dashboard</router-link>
 
       <div>
-        <button @click="toggleMenu('productos')" class="menu-item w-full flex items-center justify-between px-3 py-2 rounded-lg"><span>Productos / Stock</span><span :class="openMenus.productos ? 'rotate-180' : ''">⌄</span></button>
+        <button @click="toggleMenu('productos')" class="menu-item w-full flex items-center justify-between px-3 py-2 rounded-lg min-w-0">
+          <span class="truncate">Productos / Stock</span>
+          <span :class="openMenus.productos ? 'rotate-180' : ''">⌄</span>
+        </button>
         <div v-show="openMenus.productos" class="ml-5 mt-2 space-y-1">
           <router-link to="/productos" class="menu-item block px-3 py-2 rounded-md">Productos</router-link>
-          <router-link to="/categorias" class="menu-item block px-3 py-2 rounded-md">Categorias</router-link>
+          <router-link to="/categorias" class="menu-item block px-3 py-2 rounded-md">Categorías</router-link>
           <router-link to="/marcas" class="menu-item block px-3 py-2 rounded-md">Marcas</router-link>
           <router-link to="/kardex" class="menu-item block px-3 py-2 rounded-md">Kardex</router-link>
           <router-link to="/ofertas" class="menu-item block px-3 py-2 rounded-md">Ofertas</router-link>
-          <router-link to="/perdidas" class="menu-item block px-3 py-2 rounded-md">Perdidas</router-link>
+          <router-link to="/perdidas" class="menu-item block px-3 py-2 rounded-md">Pérdidas</router-link>
         </div>
       </div>
 
       <div>
-        <button @click="toggleMenu('ventas')" class="menu-item w-full flex items-center justify-between px-3 py-2 rounded-lg"><span>Ventas</span><span :class="openMenus.ventas ? 'rotate-180' : ''">⌄</span></button>
+        <button @click="toggleMenu('ventas')" class="menu-item w-full flex items-center justify-between px-3 py-2 rounded-lg min-w-0">
+          <span class="truncate">Ventas</span>
+          <span :class="openMenus.ventas ? 'rotate-180' : ''">⌄</span>
+        </button>
         <div v-show="openMenus.ventas" class="ml-5 mt-2 space-y-1">
           <router-link to="/ventas" class="menu-item block px-3 py-2 rounded-md">Ventas</router-link>
           <router-link to="/devoluciones-ventas" class="menu-item block px-3 py-2 rounded-md">Devoluciones</router-link>
@@ -31,7 +44,10 @@
       </div>
 
       <div>
-        <button @click="toggleMenu('compras')" class="menu-item w-full flex items-center justify-between px-3 py-2 rounded-lg"><span>Compras</span><span :class="openMenus.compras ? 'rotate-180' : ''">⌄</span></button>
+        <button @click="toggleMenu('compras')" class="menu-item w-full flex items-center justify-between px-3 py-2 rounded-lg min-w-0">
+          <span class="truncate">Compras</span>
+          <span :class="openMenus.compras ? 'rotate-180' : ''">⌄</span>
+        </button>
         <div v-show="openMenus.compras" class="ml-5 mt-2 space-y-1">
           <router-link to="/compras" class="menu-item block px-3 py-2 rounded-md">Compras</router-link>
           <router-link to="/devoluciones-compras" class="menu-item block px-3 py-2 rounded-md">Devoluciones</router-link>
@@ -39,7 +55,10 @@
       </div>
 
       <div>
-        <button @click="toggleMenu('personas')" class="menu-item w-full flex items-center justify-between px-3 py-2 rounded-lg"><span>Personas</span><span :class="openMenus.personas ? 'rotate-180' : ''">⌄</span></button>
+        <button @click="toggleMenu('personas')" class="menu-item w-full flex items-center justify-between px-3 py-2 rounded-lg min-w-0">
+          <span class="truncate">Personas</span>
+          <span :class="openMenus.personas ? 'rotate-180' : ''">⌄</span>
+        </button>
         <div v-show="openMenus.personas" class="ml-5 mt-2 space-y-1">
           <router-link to="/clientes" class="menu-item block px-3 py-2 rounded-md">Clientes</router-link>
           <router-link to="/proveedores" class="menu-item block px-3 py-2 rounded-md">Proveedores</router-link>
@@ -51,7 +70,7 @@
 
     <div class="p-3 border-t border-gray-700 space-y-2">
       <button @click="openPrefs = true" class="menu-item w-full flex items-center gap-2 px-3 py-2 rounded-lg transition">Preferencias</button>
-      <button @click="logout" class="menu-item w-full flex items-center gap-2 px-3 py-2 rounded-lg transition">Cerrar sesion</button>
+      <button @click="logout" class="menu-item w-full flex items-center gap-2 px-3 py-2 rounded-lg transition">Cerrar sesión</button>
     </div>
 
     <div class="p-3 text-xs text-gray-400 text-center">© {{ anoActual }}</div>
@@ -69,26 +88,26 @@
           <div>
             <label class="text-sm font-medium">Logo</label>
             <input type="file" accept="image/*" class="w-full mt-1 border rounded px-3 py-2" @change="onSelectLogo" />
-            <p class="text-xs text-gray-500 mt-1">Se aplica en la parte superior del menu.</p>
+            <p class="text-xs text-gray-500 mt-1">Se aplica en la parte superior del menú.</p>
           </div>
 
           <div>
-            <label class="text-sm font-medium">Color del menu</label>
+            <label class="text-sm font-medium">Color del menú</label>
             <input v-model="draft.menuColor" type="color" class="w-full h-10 mt-1 border rounded p-1" />
           </div>
 
           <div>
-            <label class="text-sm font-medium">Color del texto del menu</label>
+            <label class="text-sm font-medium">Color del texto del menú</label>
             <input v-model="draft.menuTextColor" type="color" class="w-full h-10 mt-1 border rounded p-1" />
           </div>
 
           <div>
-            <label class="text-sm font-medium">Color hover/seleccion menu</label>
+            <label class="text-sm font-medium">Color hover/selección menú</label>
             <input v-model="draft.menuHoverColor" type="color" class="w-full h-10 mt-1 border rounded p-1" />
           </div>
 
           <div>
-            <label class="text-sm font-medium">Color de fondo de modulos</label>
+            <label class="text-sm font-medium">Color de fondo de módulos</label>
             <input v-model="draft.moduleColor" type="color" class="w-full h-10 mt-1 border rounded p-1" />
           </div>
         </div>
@@ -186,5 +205,15 @@ onMounted(() => {
 
 .menu-item-active {
   background-color: var(--menu-hover-color);
+}
+
+.menu-scroll {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.menu-scroll::-webkit-scrollbar {
+  width: 0;
+  height: 0;
 }
 </style>
