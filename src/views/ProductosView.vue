@@ -275,12 +275,13 @@
                     </p>
                 </div>
                 <div>
-                    <label class="text-sm font-medium text-gray-700">Stock Inicial</label>
+                    <label class="text-sm font-medium text-gray-700">{{ modoEdicion ? "Stock actual" : "Stock Inicial" }}</label>
                     <input
                         v-model.number="stockInicial"
                         type="number"
                         min="0"
-                        class="w-full border px-3 py-2 rounded-md"
+                        :disabled="modoEdicion"
+                        class="w-full border px-3 py-2 rounded-md disabled:bg-gray-100 disabled:text-gray-500"
                         :class="errores.stockInicial ? 'border-red-400' : 'border-gray-300'"
                     />
                     <p v-if="errores.stockInicial" class="text-xs text-red-500 mt-1">

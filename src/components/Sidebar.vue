@@ -25,6 +25,7 @@
           <router-link to="/productos" class="menu-item block px-3 py-2 rounded-md">Productos</router-link>
           <router-link to="/categorias" class="menu-item block px-3 py-2 rounded-md">Categorías</router-link>
           <router-link to="/marcas" class="menu-item block px-3 py-2 rounded-md">Marcas</router-link>
+          <router-link to="/ajustes-stock" class="menu-item block px-3 py-2 rounded-md">Ajuste de Stock</router-link>
           <router-link to="/kardex" class="menu-item block px-3 py-2 rounded-md">Kardex</router-link>
           <router-link to="/ofertas" class="menu-item block px-3 py-2 rounded-md">Ofertas</router-link>
           <router-link to="/perdidas" class="menu-item block px-3 py-2 rounded-md">Pérdidas</router-link>
