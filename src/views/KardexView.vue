@@ -4,12 +4,9 @@
       Kardex de Stock
     </h1>
 
-    <!-- FILTRO -->
     <div class="flex justify-center mb-6">
       <div class="bg-white rounded shadow p-6 w-full max-w-2xl">
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
-
-          <!-- PRODUCTO -->
           <div class="md:col-span-2">
             <label class="block text-sm font-medium mb-1">
               Producto *
@@ -32,12 +29,10 @@
               </option>
             </select>
           </div>
-
         </div>
       </div>
     </div>
 
-    <!-- INFO PRODUCTO -->
     <div
       v-if="productoSeleccionado"
       class="bg-white rounded shadow p-4 mb-6"
@@ -65,7 +60,6 @@
       </div>
     </div>
 
-    <!-- TABLA -->
     <div class="bg-white rounded shadow overflow-hidden">
       <table class="w-full">
         <thead>
@@ -115,7 +109,13 @@
             </td>
           </tr>
 
-          <tr v-if="!movimientosFiltrados.length">
+          <tr v-if="loading">
+            <td colspan="6" class="text-center py-6 text-gray-400">
+              Cargando movimientos...
+            </td>
+          </tr>
+
+          <tr v-else-if="!movimientosFiltrados.length">
             <td colspan="6" class="text-center py-6 text-gray-400">
               {{ idProducto ? "No hay movimientos para este producto" : "Seleccione un producto para ver el kardex" }}
             </td>
@@ -124,7 +124,6 @@
       </table>
     </div>
 
-    <!-- PAGINADO -->
     <div class="flex justify-center items-center gap-2 mt-4">
       <button
         @click="page--"
@@ -135,7 +134,7 @@
       </button>
 
       <span class="text-sm">
-        Página {{ page }} de {{ totalPaginas }}
+        Pagina {{ page }} de {{ totalPaginas }}
       </span>
 
       <button
@@ -150,164 +149,110 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
+import { useNotificationStore } from "@/stores/notificaciones";
+import { useProductosStore } from "@/modules/productos/store";
+import { obtenerKardex } from "@/modules/kardex/services";
+import type { MovimientoStock as MovimientoStockBase } from "@/modules/kardex/types";
 
-interface MovimientoStock {
-  id: number;
-  idProducto: number;
-  fecha: string;
-  cantidad: number;
-  idTipoMovimientoStock: number;
-  idReferencia?: number | null;
-  observaciones?: string;
+interface MovimientoStock extends MovimientoStockBase {
   stockAcumulado: number;
 }
 
-const productos = ref([
-  {
-    id: 1,
-    nombre: "Coca Cola 2.25L"
-  },
-  {
-    id: 2,
-    nombre: "Galletitas surtidas"
-  },
-  {
-    id: 3,
-    nombre: "Jabón líquido"
-  }
-]);
+const notification = useNotificationStore();
+const productosStore = useProductosStore();
 
+const productos = computed(() => productosStore.productos.filter((p) => p.activo));
 const idProducto = ref(0);
-
-const movimientosBase = ref<Omit<MovimientoStock, "stockAcumulado">[]>([
-  {
-    id: 1,
-    idProducto: 1,
-    fecha: "2026-05-01T10:00:00",
-    cantidad: 50,
-    idTipoMovimientoStock: 1,
-    idReferencia: 1001,
-    observaciones: "Ingreso compra proveedor"
-  },
-  {
-    id: 2,
-    idProducto: 1,
-    fecha: "2026-05-02T14:20:00",
-    cantidad: -5,
-    idTipoMovimientoStock: 2,
-    idReferencia: 2001,
-    observaciones: "Venta mostrador"
-  },
-  {
-    id: 3,
-    idProducto: 1,
-    fecha: "2026-05-03T09:15:00",
-    cantidad: -2,
-    idTipoMovimientoStock: 3,
-    idReferencia: null,
-    observaciones: "Producto vencido"
-  },
-  {
-    id: 4,
-    idProducto: 2,
-    fecha: "2026-05-04T16:45:00",
-    cantidad: 3,
-    idTipoMovimientoStock: 4,
-    idReferencia: null,
-    observaciones: "Ajuste inventario"
-  },
-  {
-    id: 5,
-    idProducto: 3,
-    fecha: "2026-05-05T11:30:00",
-    cantidad: -10,
-    idTipoMovimientoStock: 2,
-    idReferencia: 2002,
-    observaciones: "Venta delivery"
-  },
-  {
-    id: 6,
-    idProducto: 2,
-    fecha: "2026-05-06T08:10:00",
-    cantidad: 20,
-    idTipoMovimientoStock: 1,
-    idReferencia: 1002,
-    observaciones: "Nueva compra"
-  }
-]);
+const loading = ref(false);
+const movimientosBase = ref<MovimientoStockBase[]>([]);
 
 const productoSeleccionado = computed(() => {
-  return productos.value.find(
-    p => p.id === idProducto.value
-  );
+  return productos.value.find((p) => p.id === idProducto.value);
 });
 
 const movimientosFiltrados = computed<MovimientoStock[]>(() => {
-  if (!idProducto.value) return [];
-
-  const movimientos = movimientosBase.value
-    .filter((m) => m.idProducto === idProducto.value)
-    .sort((a, b) => new Date(a.fecha).getTime() - new Date(b.fecha).getTime());
+  const movimientosAsc = [...movimientosBase.value].sort(
+    (a, b) => new Date(a.fecha).getTime() - new Date(b.fecha).getTime()
+  );
 
   let acumulado = 0;
 
-  return movimientos.map((m) => {
+  const conAcumulado = movimientosAsc.map((m) => {
     acumulado += m.cantidad;
     return {
       ...m,
       stockAcumulado: acumulado
     };
   });
+
+  return conAcumulado.reverse();
 });
 
 const stockActual = computed(() => {
-  if (!movimientosFiltrados.value.length)
-    return 0;
-
-  return movimientosFiltrados.value[
-    movimientosFiltrados.value.length - 1
-  ]?.stockAcumulado ?? 0;
+  return productoSeleccionado.value?.stockActual ?? 0;
 });
 
 const page = ref(1);
 const pageSize = 5;
 
 const totalPaginas = computed(() => {
-      return (
-    Math.ceil(
-      movimientosFiltrados.value.length / pageSize
-    ) || 1
-  );
+  return Math.ceil(movimientosFiltrados.value.length / pageSize) || 1;
 });
 
 const movimientosPaginados = computed(() => {
   const start = (page.value - 1) * pageSize;
-
-  return movimientosFiltrados.value.slice(
-    start,
-    start + pageSize
-  );
+  return movimientosFiltrados.value.slice(start, start + pageSize);
 });
 
-watch(idProducto, () => {
+watch(idProducto, async () => {
   page.value = 1;
+
+  if (!idProducto.value) {
+    movimientosBase.value = [];
+    return;
+  }
+
+  loading.value = true;
+  try {
+    movimientosBase.value = await obtenerKardex(idProducto.value);
+  } catch (error: any) {
+    movimientosBase.value = [];
+    const message =
+      error.response?.data?.mensaje ||
+      error.response?.data?.error ||
+      error.response?.data?.Error ||
+      "No se pudo cargar el kardex";
+    notification.show(message, "error");
+  } finally {
+    loading.value = false;
+  }
 });
 
 const nombreMovimiento = (id: number) => {
   switch (id) {
     case 1:
-      return "Compra";
-
+      return "Carga inicial";
     case 2:
-      return "Venta";
-
+      return "Compra";
     case 3:
-      return "Pérdida";
-
+      return "Venta";
     case 4:
+      return "Devolucion compra";
+    case 5:
+      return "Devolucion venta";
+    case 6:
+      return "Perdida";
+    case 7:
+      return "Anulacion compra";
+    case 8:
+      return "Anulacion venta";
+    case 9:
+      return "Anulacion perdida";
+    case 10:
+      return "Ajuste perdida";
+    case 11:
       return "Ajuste";
-
     default:
       return "Movimiento";
   }
@@ -316,25 +261,37 @@ const nombreMovimiento = (id: number) => {
 const colorMovimiento = (id: number) => {
   switch (id) {
     case 1:
-      return "text-green-600";
-
+      return "text-slate-600";
     case 2:
-      return "text-blue-600";
-
+      return "text-green-600";
     case 3:
-      return "text-red-500";
-
+      return "text-blue-600";
     case 4:
+      return "text-emerald-600";
+    case 5:
+      return "text-cyan-600";
+    case 6:
+      return "text-red-500";
+    case 7:
+      return "text-orange-600";
+    case 8:
+      return "text-violet-600";
+    case 9:
+      return "text-rose-600";
+    case 10:
+      return "text-amber-600";
+    case 11:
       return "text-yellow-600";
-
     default:
       return "";
   }
 };
 
 const formatearFecha = (fecha: string) => {
-  return new Date(fecha)
-    .toLocaleString("es-AR");
+  return new Date(fecha).toLocaleString("es-AR");
 };
 
+onMounted(async () => {
+  await productosStore.fetchProductos(false);
+});
 </script>
