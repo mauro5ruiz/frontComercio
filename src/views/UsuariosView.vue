@@ -127,6 +127,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from "vue";
+import { createAuthSession } from "@/modules/auth/session";
 import { useNotificationStore } from "@/stores/notificaciones";
 import {
   activarUsuario,
@@ -379,8 +380,7 @@ const probarLogin = async () => {
       usuario: loginForm.value.usuario,
       clave: loginForm.value.clave
     }));
-    localStorage.setItem("mock_auth", "1");
-    localStorage.setItem("mock_user", JSON.stringify({ usuario: usuario.rol, nombre: usuario.nombreCompleto, id: usuario.id }));
+    createAuthSession(usuario);
     loginForm.value = { usuario: "", clave: "" };
     openLoginModal.value = false;
     notification.show(`Login correcto: ${usuario.nombreCompleto}`, "success");

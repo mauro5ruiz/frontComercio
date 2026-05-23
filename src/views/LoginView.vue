@@ -10,7 +10,7 @@
       <div class="bg-white/95 backdrop-blur rounded-2xl shadow-2xl p-8 border border-white/40">
         <div class="text-center mb-7">
           <h1 class="text-3xl font-extrabold text-slate-900">LoboStock</h1>
-          <p class="text-sm text-slate-500 mt-1">Ingresá para acceder al sistema</p>
+          <p class="text-sm text-slate-500 mt-1">Ingresa para acceder al sistema</p>
         </div>
 
         <div class="space-y-4">
@@ -20,33 +20,38 @@
               v-model="usuario"
               class="w-full mt-1 border border-slate-300 px-3 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
               placeholder="Ej: admin"
+              autocomplete="username"
               @keyup.enter="login"
             />
           </div>
           <div>
-            <label class="text-sm text-slate-700 font-medium">Contraseña</label>
+            <label class="text-sm text-slate-700 font-medium">Contrasena</label>
             <input
               v-model="clave"
               type="password"
               class="w-full mt-1 border border-slate-300 px-3 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
-              placeholder="Ingresá tu contraseña"
+              placeholder="Ingresa tu contrasena"
+              autocomplete="current-password"
               @keyup.enter="login"
             />
           </div>
         </div>
 
-        <button @click="login" class="w-full mt-6 bg-cyan-600 text-white py-2.5 rounded-lg font-semibold hover:bg-cyan-700 transition cursor-pointer">
-          Ingresar
+        <button
+          @click="login"
+          :disabled="cargando"
+          class="w-full mt-6 bg-cyan-600 text-white py-2.5 rounded-lg font-semibold hover:bg-cyan-700 transition cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed"
+        >
+          {{ cargando ? "Ingresando..." : "Ingresar" }}
         </button>
 
         <p v-if="errorCredenciales" class="mt-3 text-sm text-red-600 font-medium">
-          Las credenciales son incorrectas.
+          {{ errorCredenciales }}
         </p>
 
         <div class="mt-6 text-xs text-slate-500 bg-slate-100 rounded-lg p-3">
-          <p class="font-semibold text-slate-700 mb-1">Credenciales mock</p>
-          <p><b>Usuario:</b> admin</p>
-          <p><b>Contraseña:</b> Admin1</p>
+          <p class="font-semibold text-slate-700 mb-1">Acceso al sistema</p>
+          <p>Ingresa con un usuario activo creado en el modulo de usuarios.</p>
         </div>
       </div>
     </div>
@@ -54,27 +59,53 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from "vue";
+import { onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
+import { createAuthSession, isAuthenticated } from "@/modules/auth/session";
+import { loginUsuario } from "@/modules/usuarios/services";
 
 const router = useRouter();
 const usuario = ref("");
 const clave = ref("");
-const errorCredenciales = ref(false);
+const errorCredenciales = ref("");
+const cargando = ref(false);
 
-const login = () => {
-  errorCredenciales.value = false;
-  const credencialesValidas = usuario.value.trim().toLowerCase() === "admin" && clave.value === "Admin1";
+const login = async () => {
+  errorCredenciales.value = "";
 
-  if (!credencialesValidas) {
-    errorCredenciales.value = true;
+  if (!usuario.value.trim() || !clave.value.trim()) {
+    errorCredenciales.value = "Ingresa usuario y contrasena.";
     return;
   }
 
-  localStorage.setItem("mock_auth", "1");
-  localStorage.setItem("mock_user", JSON.stringify({ usuario: "admin", nombre: "Administrador" }));
-  router.push("/dashboard");
+  cargando.value = true;
+
+  try {
+    const usuarioAutenticado = await loginUsuario({
+      usuario: usuario.value.trim(),
+      clave: clave.value
+    });
+
+    createAuthSession(usuarioAutenticado);
+    usuario.value = "";
+    clave.value = "";
+    await router.push("/dashboard");
+  } catch (err: any) {
+    const data = err?.response?.data;
+    errorCredenciales.value =
+      typeof data === "string"
+        ? data
+        : data?.error || data?.Error || "Usuario o contrasena incorrectos.";
+  } finally {
+    cargando.value = false;
+  }
 };
+
+onMounted(async () => {
+  if (isAuthenticated()) {
+    await router.push("/dashboard");
+  }
+});
 </script>
 
 <style scoped>

@@ -126,6 +126,7 @@
 <script setup>
 import { onMounted, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
+import { clearAuthSession } from "@/modules/auth/session";
 
 const route = useRoute();
 const router = useRouter();
@@ -188,8 +189,7 @@ const onSelectLogo = (e) => {
 };
 
 const logout = () => {
-  localStorage.removeItem("mock_auth");
-  localStorage.removeItem("mock_user");
+  clearAuthSession();
   router.push("/login");
 };
 

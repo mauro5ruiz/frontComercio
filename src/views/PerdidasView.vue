@@ -284,6 +284,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from "vue";
+import { getAuthUser } from "@/modules/auth/session";
 import { useNotificationStore } from "@/stores/notificaciones";
 import { useProductosStore } from "@/modules/productos/store";
 import {
@@ -302,22 +303,16 @@ import { EstadoPerdida, type DetallePerdida, type Perdida } from "@/modules/perd
 const notification = useNotificationStore();
 const productosStore = useProductosStore();
 
-const notificationUser = (() => {
-  try {
-    const raw = localStorage.getItem("mock_user");
-    return raw ? JSON.parse(raw) : null;
-  } catch {
-    return null;
-  }
-})();
+const notificationUser = getAuthUser();
 
 const usuario = ref({
   id: Number(notificationUser?.id ?? 1),
   nombre: String(notificationUser?.nombre ?? "Administrador"),
-  rol: String(notificationUser?.usuario ?? "admin").toLowerCase() === "admin" ? "admin" : "usuario"
+  rolId: Number(notificationUser?.rolId ?? 0),
+  rol: String(notificationUser?.rol ?? "").toLowerCase()
 });
 
-const esAdmin = computed(() => usuario.value.rol === "admin");
+const esAdmin = computed(() => usuario.value.rolId === 1 || usuario.value.rol.includes("admin"));
 
 const productos = computed(() => productosStore.productos.filter((p) => p.activo));
 const perdidas = ref<Perdida[]>([]);
@@ -360,8 +355,7 @@ watch([search, filtroEstado], () => {
 });
 
 const puedeEditarDetalles = computed(() => {
-  if (!modoEdicion.value) return true;
-  return estadoPerdidaEditando.value === EstadoPerdida.Pendiente;
+  return !modoEdicion.value;
 });
 
 const nombreEstado = (id: number) => {
@@ -535,6 +529,7 @@ const autorizar = async (id: number) => {
   try {
     const resp = await aprobarPerdida(id);
     notification.show(resp?.mensaje || "Perdida aprobada correctamente", "success");
+    await productosStore.fetchProductos(false);
     await buscarPerdidas();
   } catch (err: any) {
     const message = err.response?.data?.error || err.response?.data?.Error || "No se pudo aprobar la perdida";
@@ -665,8 +660,8 @@ const guardar = async () => {
         fecha: fechaLocal,
         motivo: motivo.value.trim(),
         observacion: observacion.value.trim(),
-        idUsuario: 2,
-        idEstado: EstadoPerdida.Pendiente,
+        idUsuario: usuario.value.id,
+        idEstado: esAdmin.value ? EstadoPerdida.Confirmada : EstadoPerdida.Pendiente,
         detalles: detalles.value.map((d) => ({
           idProducto: d.idProducto,
           cantidad: d.cantidad
@@ -674,6 +669,10 @@ const guardar = async () => {
       });
 
       notification.show(resp?.mensaje || "Perdida creada correctamente", "success");
+
+      if (esAdmin.value) {
+        await productosStore.fetchProductos(false);
+      }
     }
 
     await buscarPerdidas();

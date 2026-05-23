@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { isAuthenticated } from '@/modules/auth/session'
 
 const routes = [
   {
@@ -91,7 +92,7 @@ const router = createRouter({
 })
 
 router.beforeEach((to, _from, next) => {
-  const isAuth = localStorage.getItem("mock_auth") === "1";
+  const isAuth = isAuthenticated();
 
   if (to.path === "/login" && isAuth) {
     next("/dashboard");
