@@ -150,6 +150,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from "vue";
+import { compareApiDateStrings, parseApiDate } from "@/utils/date";
 import { useNotificationStore } from "@/stores/notificaciones";
 import { useProductosStore } from "@/modules/productos/store";
 import { obtenerKardex } from "@/modules/kardex/services";
@@ -173,7 +174,7 @@ const productoSeleccionado = computed(() => {
 
 const movimientosFiltrados = computed<MovimientoStock[]>(() => {
   const movimientosAsc = [...movimientosBase.value].sort(
-    (a, b) => new Date(a.fecha).getTime() - new Date(b.fecha).getTime()
+    (a, b) => compareApiDateStrings(a.fecha, b.fecha)
   );
 
   let acumulado = 0;
@@ -288,7 +289,8 @@ const colorMovimiento = (id: number) => {
 };
 
 const formatearFecha = (fecha: string) => {
-  return new Date(fecha).toLocaleString("es-AR");
+  const parsed = parseApiDate(fecha);
+  return parsed ? parsed.toLocaleString("es-AR", { hour12: false }) : "-";
 };
 
 onMounted(async () => {

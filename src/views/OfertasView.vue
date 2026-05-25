@@ -264,6 +264,7 @@
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import { formatDateTimeEsAr, parseApiDate } from "@/utils/date";
 import { useProductosStore } from "@/modules/productos/store";
 import type { Producto } from "@/modules/productos/types";
 import {
@@ -384,15 +385,11 @@ const formatearPrecioFinal = (oferta: Oferta) => {
 };
 
 const formatearFecha = (valor: string) => {
-  if (!valor) return "-";
-  return new Date(valor).toLocaleString("es-AR");
+  return formatDateTimeEsAr(valor);
 };
 
 const parseLocalDateTime = (valor: string) => {
-  if (!valor) return null;
-  const normalizado = valor.includes("T") ? valor : valor.replace(" ", "T");
-  const fecha = new Date(normalizado);
-  return Number.isNaN(fecha.getTime()) ? null : fecha;
+  return parseApiDate(valor);
 };
 
 const toLocalInputValue = (valor: string) => {

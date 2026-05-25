@@ -2,7 +2,7 @@
   <div class="p-6">
     <h1 class="text-2xl font-bold mb-4">Compras</h1>
 
-    <div class="bg-white rounded-xl shadow p-4 mb-4 grid grid-cols-1 md:grid-cols-3 gap-3">
+    <div class="bg-white rounded-xl shadow p-4 mb-4 grid grid-cols-1 md:grid-cols-2 gap-3">
       <div>
         <label class="text-sm text-gray-600">Desde</label>
         <input
@@ -22,11 +22,6 @@
           class="w-full border px-3 py-2 rounded-md"
           @blur="buscarCompras"
         />
-      </div>
-      <div class="flex items-end">
-        <button @click="abrirModalPagoProveedor" class="w-full bg-emerald-600 text-white px-4 py-2 rounded hover:bg-emerald-700">
-          Pagar proveedor
-        </button>
       </div>
     </div>
 
@@ -50,7 +45,10 @@
         </tr>
       </thead>
       <tbody>
-        <tr v-for="c in comprasPaginadas" :key="c.id" class="border-b hover:bg-gray-50">
+        <tr v-if="comprasStore.loading">
+          <td colspan="8" class="text-center py-4 text-gray-400">Cargando compras...</td>
+        </tr>
+        <tr v-else v-for="c in comprasPaginadas" :key="c.id" class="border-b hover:bg-gray-50">
           <td class="p-2">{{ formatDate(c.fecha) }}</td>
           <td class="p-2">{{ c.numeroComprobante }}</td>
           <td class="p-2">{{ nombreProveedor(c.idProveedor) }}</td>
@@ -67,16 +65,16 @@
             <button v-if="c.estado !== 2" @click="anular(c.id)" class="text-red-500">Anular</button>
           </td>
         </tr>
-        <tr v-if="comprasFiltradas.length === 0">
+        <tr v-if="!comprasStore.loading && comprasFiltradas.length === 0">
           <td colspan="8" class="text-center py-4 text-gray-400">No hay compras</td>
         </tr>
       </tbody>
     </table>
 
     <div class="flex justify-center items-center gap-2 mt-4">
-      <button @click="page--" :disabled="page === 1" class="px-3 py-1 bg-gray-200 rounded disabled:opacity-50">←</button>
-      <span class="text-sm">Página {{ page }} de {{ totalPaginas }}</span>
-      <button @click="page++" :disabled="page === totalPaginas" class="px-3 py-1 bg-gray-200 rounded disabled:opacity-50">→</button>
+      <button @click="page--" :disabled="page === 1" class="px-3 py-1 bg-gray-200 rounded disabled:opacity-50">&larr;</button>
+      <span class="text-sm">Pagina {{ page }} de {{ totalPaginas }}</span>
+      <button @click="page++" :disabled="page === totalPaginas" class="px-3 py-1 bg-gray-200 rounded disabled:opacity-50">&rarr;</button>
     </div>
 
     <div v-if="openModal" @click.self="cerrarModal" class="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50">
@@ -95,7 +93,7 @@
               <label class="text-sm text-gray-700">Proveedor *</label>
               <div class="relative">
                 <input v-model="proveedorSearch" class="w-full border px-3 py-2 rounded-md pr-8" placeholder="Buscar proveedor" @focus="proveedorOpen = true" />
-                <button v-if="form.idProveedor > 0 || proveedorSearch" type="button" class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700 text-sm" @click="limpiarProveedor">×</button>
+                <button v-if="form.idProveedor > 0 || proveedorSearch" type="button" class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700 text-sm" @click="limpiarProveedor">x</button>
               </div>
               <div v-if="proveedorOpen && proveedoresFiltrados.length" class="absolute z-20 w-full mt-1 bg-white border rounded-md shadow max-h-44 overflow-y-auto">
                 <button v-for="p in proveedoresFiltrados" :key="p.id" type="button" class="w-full text-left px-3 py-2 hover:bg-gray-50 text-sm" @click="seleccionarProveedor(p)">
@@ -111,46 +109,94 @@
           </div>
 
           <div class="border rounded-lg p-4 bg-gray-50/50">
-            <div class="flex justify-between items-center mb-2">
+            <div class="flex justify-between items-center mb-3">
               <div>
                 <h3 class="font-semibold text-gray-800">Detalle de productos</h3>
-                <p class="text-xs text-gray-500">Carga un producto y presiona "Agregar". Abajo se muestra el listado.</p>
+                <p class="text-xs text-gray-500">Primero elegi un producto, despues completa cantidad y precio unitario.</p>
               </div>
             </div>
-            <div class="grid grid-cols-1 md:grid-cols-5 gap-2 mb-3">
-              <div ref="productoBox" class="relative md:col-span-2">
-                <div class="relative">
-                  <input v-model="productoSearch" class="border px-3 py-2 rounded-md w-full pr-8" placeholder="Buscar producto" @focus="productoOpen = true" />
-                  <button v-if="nuevoDetalle.idProducto > 0 || productoSearch" type="button" class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700 text-sm" @click="limpiarProducto">×</button>
+
+            <div class="rounded-lg border border-dashed border-gray-300 bg-white p-4 mb-3">
+              <div class="grid grid-cols-1 md:grid-cols-5 gap-3 md:items-start">
+                <div ref="productoBox" class="relative md:col-span-2">
+                  <label class="block text-sm font-medium text-gray-700 mb-1">1. Producto</label>
+                  <div class="relative">
+                    <input
+                      v-model="productoSearch"
+                      class="border px-3 py-2 rounded-md w-full pr-8"
+                      placeholder="Escribe para buscar un producto"
+                      @focus="productoOpen = true"
+                    />
+                    <button v-if="nuevoDetalle.idProducto > 0 || productoSearch" type="button" class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700 text-sm" @click="limpiarProducto">x</button>
+                  </div>
+                  <p class="text-xs text-gray-500 mt-1">Busca por nombre y seleccionalo de la lista.</p>
+                  <div v-if="nuevoDetalle.idProducto > 0" class="mt-2 rounded-md bg-blue-50 text-blue-800 px-3 py-2 text-sm border border-blue-100">
+                    <div>
+                      Producto seleccionado: <span class="font-semibold">{{ nombreProducto(nuevoDetalle.idProducto) }}</span>
+                    </div>
+                    <div class="mt-1">
+                      Stock actual: <span class="font-semibold">{{ stockProducto(nuevoDetalle.idProducto) }}</span>
+                    </div>
+                    <div class="mt-1">
+                      Precio compra actual: <span class="font-semibold">{{ precioCompraProducto(nuevoDetalle.idProducto) }}</span>
+                    </div>
+                  </div>
+                  <div v-if="productoOpen && productosFiltrados.length" class="absolute z-20 w-full mt-1 bg-white border rounded-md shadow max-h-52 overflow-y-auto">
+                    <button v-for="prod in productosFiltrados" :key="prod.id" type="button" class="w-full text-left px-3 py-2 hover:bg-gray-50 text-sm" @click="seleccionarProducto(prod)">
+                      <div class="font-medium text-gray-800">{{ prod.nombre }}</div>
+                      <div class="text-xs text-gray-500">Stock actual: {{ prod.stockActual }}</div>
+                      <div class="text-xs text-gray-500">Precio compra: {{ money(prod.precioCompra ?? 0) }}</div>
+                    </button>
+                  </div>
                 </div>
-                <div v-if="productoOpen && productosFiltrados.length" class="absolute z-20 w-full mt-1 bg-white border rounded-md shadow max-h-52 overflow-y-auto">
-                  <button v-for="prod in productosFiltrados" :key="prod.id" type="button" class="w-full text-left px-3 py-2 hover:bg-gray-50 text-sm" @click="seleccionarProducto(prod)">
-                    {{ prod.nombre }}
+
+                <div class="flex flex-col">
+                  <label class="block text-sm font-medium text-gray-700 mb-1">2. Cantidad</label>
+                  <input
+                    v-model.number="nuevoDetalle.cantidad"
+                    type="number"
+                    min="1"
+                    step="1"
+                    placeholder="Ej: 10"
+                    :disabled="nuevoDetalle.idProducto <= 0"
+                    class="border px-3 py-2 rounded-md w-full disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
+                    @keydown="bloquearDecimal"
+                  />
+                  <p class="text-xs text-gray-500 mt-1">
+                    {{ nuevoDetalle.idProducto > 0 ? "Solo numeros enteros." : "Primero selecciona un producto." }}
+                  </p>
+                </div>
+
+                <div class="flex flex-col">
+                  <label class="block text-sm font-medium text-gray-700 mb-1">3. Precio unitario</label>
+                  <input
+                    v-model.number="nuevoDetalle.precioUnitario"
+                    type="number"
+                    min="1"
+                    step="1"
+                    placeholder="Ej: 2500"
+                    :disabled="nuevoDetalle.idProducto <= 0"
+                    class="border px-3 py-2 rounded-md w-full disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
+                    @keydown="bloquearDecimal"
+                  />
+                  <p class="text-xs text-gray-500 mt-1">
+                    {{ nuevoDetalle.idProducto > 0 ? "Valor por unidad, sin decimales." : "Se habilita al elegir un producto." }}
+                  </p>
+                </div>
+
+                <div class="flex flex-col md:self-start">
+                  <label class="block text-sm font-medium text-gray-700 mb-1">4. Accion</label>
+                  <button
+                    @click="agregarDetalle"
+                    :disabled="nuevoDetalle.idProducto <= 0"
+                    class="w-full bg-blue-600 text-white rounded-md px-3 py-2 hover:bg-blue-700 disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed"
+                  >
+                    Agregar al detalle
                   </button>
                 </div>
               </div>
-              <input
-                v-model.number="nuevoDetalle.cantidad"
-                type="number"
-                min="1"
-                step="1"
-                placeholder="Cantidad"
-                class="border px-3 py-2 rounded-md w-full"
-                @keydown="bloquearDecimal"
-              />
-              <input
-                v-model.number="nuevoDetalle.precioUnitario"
-                type="number"
-                min="1"
-                step="1"
-                placeholder="Precio unitario (entero)"
-                class="border px-3 py-2 rounded-md w-full"
-                @keydown="bloquearDecimal"
-              />
-              <button @click="agregarDetalle" class="bg-blue-600 text-white rounded-md px-3 py-2 hover:bg-blue-700">
-                Agregar
-              </button>
             </div>
+
             <div class="overflow-x-auto border rounded-md bg-white">
               <table class="w-full min-w-[640px]">
                 <thead class="bg-gray-50 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide">
@@ -164,7 +210,11 @@
                 </thead>
                 <tbody>
                   <tr v-for="(d, idx) in form.detalles" :key="idx" class="border-t">
-                    <td class="px-3 py-2">{{ nombreProducto(d.idProducto) }}</td>
+                    <td class="px-3 py-2">
+                      <div>{{ nombreProducto(d.idProducto) }}</div>
+                      <div class="text-xs text-gray-500">Stock actual: {{ stockProducto(d.idProducto) }}</div>
+                      <div class="text-xs text-gray-500">Precio compra actual: {{ precioCompraProducto(d.idProducto) }}</div>
+                    </td>
                     <td class="px-3 py-2 text-right">
                       <input
                         v-model.number="d.cantidad"
@@ -199,6 +249,7 @@
               </table>
             </div>
           </div>
+
           <div class="border rounded-lg p-3">
             <div class="flex justify-between items-center mb-2">
               <h3 class="font-semibold">Pagos iniciales (opcional)</h3>
@@ -263,185 +314,68 @@
         </div>
         <h3 class="font-semibold mb-1">Detalles</h3>
         <ul class="mb-3">
-          <li v-for="d in compraDetalle.detalles" :key="d.id" class="text-sm border-b py-1">
-            {{ nombreProducto(d.idProducto) }} - Cantidad: {{ d.cantidad }} - PU: {{ money(d.precioUnitario) }} - Subtotal: {{ money(d.subtotal) }}
+          <li v-for="(d, index) in compraDetalle.detalles || []" :key="d.id ?? `${d.idProducto}-${index}`" class="text-sm border-b py-1">
+            {{ nombreProducto(d.idProducto) }} - Cantidad: {{ d.cantidad }} - PU: {{ money(d.precioUnitario) }} - Subtotal: {{ money(d.subtotal || d.cantidad * d.precioUnitario) }}
           </li>
         </ul>
         <h3 class="font-semibold mb-1">Pagos</h3>
         <ul>
-          <li v-for="p in compraDetalle.pagos" :key="p.id" class="text-sm border-b py-1">
+          <li v-for="(p, index) in compraDetalle.pagos || []" :key="p.id ?? `${p.idFormaPago}-${index}`" class="text-sm border-b py-1">
             {{ nombreFormaPago(p.idFormaPago) }} - {{ money(p.importe) }} - {{ p.referencia || "-" }}
           </li>
-          <li v-if="compraDetalle.pagos.length === 0" class="text-sm text-gray-400">Sin pagos registrados</li>
+          <li v-if="!(compraDetalle.pagos?.length)" class="text-sm text-gray-400">Sin pagos registrados</li>
         </ul>
       </div>
     </div>
 
-    <div v-if="openPagarProveedorModal" @click.self="cerrarModalPagoProveedor" class="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-50">
-      <div class="bg-white rounded-lg shadow-lg w-full max-w-md p-6">
-        <h2 class="text-lg font-bold mb-4">Pagar proveedor</h2>
-        <div class="space-y-3">
-          <div ref="pagoProveedorBox" class="relative">
-            <label class="text-sm text-gray-700">Proveedor *</label>
-            <div class="relative">
-              <input v-model="pagoProveedorSearch" class="w-full border px-3 py-2 rounded-md pr-8" placeholder="Buscar proveedor" @focus="pagoProveedorOpen = true" />
-              <button v-if="pagoProveedor.idProveedor > 0 || pagoProveedorSearch" type="button" class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700 text-sm" @click="limpiarPagoProveedor">×</button>
-            </div>
-            <div v-if="pagoProveedorOpen && proveedoresFiltradosPago.length" class="absolute z-20 w-full mt-1 bg-white border rounded-md shadow max-h-44 overflow-y-auto">
-              <button v-for="p in proveedoresFiltradosPago" :key="p.id" type="button" class="w-full text-left px-3 py-2 hover:bg-gray-50 text-sm" @click="seleccionarProveedorPago(p)">
-                {{ p.razonSocial }}
-              </button>
-            </div>
-          </div>
-          <div>
-            <label class="text-sm text-gray-700">Forma de pago *</label>
-            <select v-model.number="pagoProveedor.idFormaPago" class="w-full border px-3 py-2 rounded-md">
-              <option :value="0">Seleccionar</option>
-              <option v-for="f in formasDePago" :key="f.id" :value="f.id">{{ f.nombre }}</option>
-            </select>
-          </div>
-          <div>
-            <label class="text-sm text-gray-700">Importe *</label>
-            <input v-model.number="pagoProveedor.importe" type="number" min="0.01" step="0.01" class="w-full border px-3 py-2 rounded-md" />
-          </div>
-        </div>
-        <div class="flex justify-end gap-2 mt-5">
-          <button @click="cerrarModalPagoProveedor" class="px-4 py-2 rounded bg-gray-200 hover:bg-gray-300">Cancelar</button>
-          <button @click="guardarPagoProveedor" class="px-4 py-2 rounded bg-emerald-600 text-white hover:bg-emerald-700">Registrar pago</button>
-        </div>
-      </div>
-    </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
+import { useComprasStore } from "@/modules/compras/store";
+import type { Compra } from "@/modules/compras/types";
+import { useFormasDePagoStore } from "@/modules/formasDePagos/store";
+import { useProductosStore } from "@/modules/productos/store";
+import type { Producto } from "@/modules/productos/types";
+import { useProveedoresStore } from "@/modules/proveedores/store";
+import type { Proveedor } from "@/modules/proveedores/types";
 import { useNotificationStore } from "@/stores/notificaciones";
 
-interface ProveedorMock {
-  id: number;
-  razonSocial: string;
-}
-
-interface ProductoMock {
-  id: number;
-  nombre: string;
-}
-
-interface FormaPagoMock {
-  id: number;
-  nombre: string;
-}
-
-interface DetalleCompraMock {
-  id: number;
-  idProducto: number;
-  cantidad: number;
-  precioUnitario: number;
-  subtotal: number;
-}
-
-interface PagoCompraMock {
-  id: number;
-  idFormaPago: number;
-  importe: number;
-  referencia?: string;
-}
-
-interface CompraMock {
-  id: number;
-  numeroComprobante: string;
-  fecha: string;
-  idProveedor: number;
-  idSucursal: number;
-  observaciones?: string;
-  total: number;
-  totalPagado: number;
-  saldoPendiente: number;
-  estado: number;
-  detalles: DetalleCompraMock[];
-  pagos: PagoCompraMock[];
-}
-
 const notification = useNotificationStore();
+const comprasStore = useComprasStore();
+const proveedoresStore = useProveedoresStore();
+const productosStore = useProductosStore();
+const formasDePagoStore = useFormasDePagoStore();
+
+const padDatePart = (value: number) => String(value).padStart(2, "0");
+const toLocalInputDate = (date: Date) =>
+  `${date.getFullYear()}-${padDatePart(date.getMonth() + 1)}-${padDatePart(date.getDate())}`;
+const parseApiDate = (value: string) => {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    const [year, month, day] = value.split("-").map(Number);
+    return new Date(year, (month || 1) - 1, day || 1);
+  }
+  return new Date(value);
+};
 
 const hoy = new Date();
 const primerDiaMes = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
-const toInputDate = (d: Date) => d.toISOString().slice(0, 10);
 
-const desde = ref(toInputDate(primerDiaMes));
-const hasta = ref(toInputDate(hoy));
+const desde = ref(toLocalInputDate(primerDiaMes));
+const hasta = ref(toLocalInputDate(hoy));
 const page = ref(1);
 const pageSize = 10;
 
-const proveedores = ref<ProveedorMock[]>([
-  { id: 1, razonSocial: "Distribuidora Norte SRL" },
-  { id: 2, razonSocial: "Alimentos Central SA" },
-  { id: 3, razonSocial: "Mayorista del Sur" },
-]);
-
-const formasDePago = ref<FormaPagoMock[]>([
-  { id: 1, nombre: "Efectivo" },
-  { id: 2, nombre: "Transferencia" },
-  { id: 3, nombre: "Tarjeta Débito" },
-]);
-
-const productos = ref<ProductoMock[]>([
-  { id: 101, nombre: "Yerba Mate 1kg" },
-  { id: 103, nombre: "Azucar 1kg" },
-  { id: 111, nombre: "Aceite Girasol 900ml" },
-  { id: 120, nombre: "Arroz Largo Fino 1kg" },
-  { id: 125, nombre: "Fideos Spaghetti 500g" },
-]);
-
-const compras = ref<CompraMock[]>([
-  {
-    id: 1,
-    numeroComprobante: "A-0001-00001234",
-    fecha: new Date(hoy.getFullYear(), hoy.getMonth(), 2).toISOString(),
-    idProveedor: 1,
-    idSucursal: 1,
-    observaciones: "Entrega completa",
-    total: 85000,
-    totalPagado: 30000,
-    saldoPendiente: 55000,
-    estado: 1,
-    detalles: [
-      { id: 1, idProducto: 101, cantidad: 10, precioUnitario: 2500, subtotal: 25000 },
-      { id: 2, idProducto: 103, cantidad: 20, precioUnitario: 3000, subtotal: 60000 },
-    ],
-    pagos: [{ id: 1, idFormaPago: 2, importe: 30000, referencia: "TRX-001" }],
-  },
-  {
-    id: 2,
-    numeroComprobante: "A-0001-00001235",
-    fecha: new Date(hoy.getFullYear(), hoy.getMonth(), 5).toISOString(),
-    idProveedor: 2,
-    idSucursal: 1,
-    total: 42000,
-    totalPagado: 42000,
-    saldoPendiente: 0,
-    estado: 1,
-    detalles: [{ id: 3, idProducto: 111, cantidad: 14, precioUnitario: 3000, subtotal: 42000 }],
-    pagos: [{ id: 2, idFormaPago: 1, importe: 42000 }],
-  },
-]);
-
-const comprasFiltradas = ref<CompraMock[]>([...compras.value]);
-
 const openModal = ref(false);
 const openDetalleModal = ref(false);
-const openPagarProveedorModal = ref(false);
-const compraDetalle = ref<CompraMock | null>(null);
+const compraDetalle = ref<Compra | null>(null);
 const proveedorOpen = ref(false);
 const productoOpen = ref(false);
-const pagoProveedorOpen = ref(false);
 const proveedorSearch = ref("");
 const productoSearch = ref("");
-const pagoProveedorSearch = ref("");
 const proveedorBox = ref<HTMLElement | null>(null);
 const productoBox = ref<HTMLElement | null>(null);
-const pagoProveedorBox = ref<HTMLElement | null>(null);
 
 const form = ref({
   numeroComprobante: "",
@@ -458,13 +392,12 @@ const nuevoDetalle = ref({
   precioUnitario: 0,
 });
 
-const pagoProveedor = ref({
-  idProveedor: 0,
-  importe: 0,
-  idFormaPago: 0,
-});
 const pagarTodo = ref(false);
 
+const proveedores = computed(() => proveedoresStore.proveedores.filter(p => p.activo));
+const productos = computed(() => productosStore.productos.filter(p => p.activo));
+const formasDePago = computed(() => formasDePagoStore.formasDePago);
+const comprasFiltradas = computed(() => comprasStore.compras);
 const totalPaginas = computed(() => Math.max(1, Math.ceil(comprasFiltradas.value.length / pageSize)));
 const comprasPaginadas = computed(() => {
   const start = (page.value - 1) * pageSize;
@@ -473,22 +406,18 @@ const comprasPaginadas = computed(() => {
 const totalCalculado = computed(() => form.value.detalles.reduce((acc, d) => acc + (Number(d.cantidad) || 0) * (Number(d.precioUnitario) || 0), 0));
 const proveedoresFiltrados = computed(() => proveedores.value.filter(p => p.razonSocial.toLowerCase().includes(proveedorSearch.value.toLowerCase())).slice(0, 8));
 const productosFiltrados = computed(() => productos.value.filter(p => p.nombre.toLowerCase().includes(productoSearch.value.toLowerCase())).slice(0, 10));
-const proveedoresFiltradosPago = computed(() => proveedores.value.filter(p => p.razonSocial.toLowerCase().includes(pagoProveedorSearch.value.toLowerCase())).slice(0, 8));
 
-const buscarCompras = () => {
+const buscarCompras = async () => {
   if (!desde.value || !hasta.value) {
-    comprasFiltradas.value = [...compras.value];
     page.value = 1;
     return;
   }
 
   const desdeDate = new Date(`${desde.value}T00:00:00`);
   const hastaDate = new Date(`${hasta.value}T23:59:59`);
-  const desdeInvalida = Number.isNaN(desdeDate.getTime());
-  const hastaInvalida = Number.isNaN(hastaDate.getTime());
 
-  if (desdeInvalida || hastaInvalida) {
-    notification.show("Las fechas ingresadas no son válidas", "error");
+  if (Number.isNaN(desdeDate.getTime()) || Number.isNaN(hastaDate.getTime())) {
+    notification.show("Las fechas ingresadas no son validas", "error");
     return;
   }
 
@@ -497,10 +426,7 @@ const buscarCompras = () => {
     return;
   }
 
-  comprasFiltradas.value = compras.value.filter(c => {
-    const fecha = new Date(c.fecha);
-    return fecha >= desdeDate && fecha <= hastaDate;
-  });
+  await comprasStore.fetchCompras(desde.value, hasta.value);
   page.value = 1;
 };
 
@@ -525,20 +451,24 @@ const abrirCrear = () => {
 const cerrarModal = () => {
   openModal.value = false;
 };
-const seleccionarProveedor = (proveedor: ProveedorMock) => {
+
+const seleccionarProveedor = (proveedor: Proveedor) => {
   form.value.idProveedor = proveedor.id;
   proveedorSearch.value = proveedor.razonSocial;
   proveedorOpen.value = false;
 };
+
 const limpiarProveedor = () => {
   form.value.idProveedor = 0;
   proveedorSearch.value = "";
 };
-const seleccionarProducto = (producto: ProductoMock) => {
+
+const seleccionarProducto = (producto: Producto) => {
   nuevoDetalle.value.idProducto = producto.id;
   productoSearch.value = producto.nombre;
   productoOpen.value = false;
 };
+
 const limpiarProducto = () => {
   nuevoDetalle.value.idProducto = 0;
   productoSearch.value = "";
@@ -555,7 +485,9 @@ const agregarDetalle = () => {
   nuevoDetalle.value = { idProducto: 0, cantidad: 1, precioUnitario: 0 };
   productoSearch.value = "";
 };
+
 const quitarDetalle = (idx: number) => form.value.detalles.splice(idx, 1);
+
 const normalizarDetalle = (idx: number) => {
   const item = form.value.detalles[idx];
   if (!item) return;
@@ -570,8 +502,10 @@ const normalizarDetalle = (idx: number) => {
     notification.show("El precio unitario debe ser un numero entero mayor a 0", "error");
   }
 };
+
 const agregarPago = () => form.value.pagos.push({ idFormaPago: 0, importe: 0, referencia: "" });
 const quitarPago = (idx: number) => form.value.pagos.splice(idx, 1);
+
 const togglePagarTodo = () => {
   if (pagarTodo.value) {
     form.value.pagos = [{ idFormaPago: 0, importe: totalCalculado.value, referencia: "Pago total" }];
@@ -586,177 +520,133 @@ const bloquearDecimal = (event: KeyboardEvent) => {
   }
 };
 
-const guardarCompra = () => {
-  if (!form.value.numeroComprobante.trim()) return notification.show("El número de comprobante es obligatorio", "error");
+const guardarCompra = async () => {
+  if (!form.value.numeroComprobante.trim()) return notification.show("El numero de comprobante es obligatorio", "error");
   if (form.value.idProveedor <= 0) return notification.show("Debe seleccionar un proveedor", "error");
   if (form.value.idSucursal <= 0) return notification.show("La sucursal es obligatoria", "error");
   if (!form.value.detalles.length) return notification.show("Debe agregar al menos un detalle", "error");
+
   if (pagarTodo.value && form.value.pagos.length) {
-    form.value.pagos[0].importe = totalCalculado.value;
+    const primerPago = form.value.pagos[0];
+    if (primerPago) {
+      primerPago.importe = totalCalculado.value;
+    }
   }
 
   for (const d of form.value.detalles) {
     if (d.idProducto <= 0 || d.cantidad <= 0 || d.precioUnitario <= 0) {
-      return notification.show("Revisá los detalles: producto, cantidad y precio deben ser mayores a 0", "error");
+      return notification.show("Revisa los detalles: producto, cantidad y precio deben ser mayores a 0", "error");
     }
     if (!Number.isInteger(d.cantidad)) {
-      return notification.show("La cantidad debe ser un número entero", "error");
+      return notification.show("La cantidad debe ser un numero entero", "error");
     }
   }
 
-  const detalles = form.value.detalles.map((d, i) => ({
-    id: i + 1,
+  const detalles = form.value.detalles.map(d => ({
     idProducto: d.idProducto,
     cantidad: d.cantidad,
     precioUnitario: d.precioUnitario,
-    subtotal: d.cantidad * d.precioUnitario,
   }));
 
   const pagos = form.value.pagos
     .filter(p => p.idFormaPago > 0 && p.importe > 0)
-    .map((p, i) => ({
-      id: i + 1,
+    .map(p => ({
       idFormaPago: p.idFormaPago,
       importe: p.importe,
       referencia: p.referencia,
     }));
 
-  const total = detalles.reduce((acc, d) => acc + d.subtotal, 0);
+  const total = form.value.detalles.reduce((acc, d) => acc + d.cantidad * d.precioUnitario, 0);
   const totalPagado = pagos.reduce((acc, p) => acc + p.importe, 0);
   if (totalPagado > total) {
     return notification.show("Los pagos no pueden superar el total de la compra", "error");
   }
 
-  const nuevaCompra: CompraMock = {
-    id: Math.max(0, ...compras.value.map(c => c.id)) + 1,
-    numeroComprobante: form.value.numeroComprobante,
-    fecha: new Date().toISOString(),
+  const idCompra = await comprasStore.addCompra({
+    numeroComprobante: form.value.numeroComprobante.trim(),
     idProveedor: form.value.idProveedor,
     idSucursal: form.value.idSucursal,
-    observaciones: form.value.observaciones || undefined,
-    total,
-    totalPagado,
-    saldoPendiente: Math.max(0, total - totalPagado),
-    estado: 1,
+    observaciones: form.value.observaciones?.trim() || undefined,
     detalles,
     pagos,
-  };
+  });
 
-  compras.value.unshift(nuevaCompra);
-  buscarCompras();
+  if (!idCompra) return;
+
   openModal.value = false;
-  notification.show("Compra creada correctamente (mock)", "success");
+  await Promise.all([
+    buscarCompras(),
+    productosStore.fetchProductos(),
+  ]);
 };
 
-const verDetalle = (id: number) => {
-  compraDetalle.value = compras.value.find(c => c.id === id) || null;
+const verDetalle = async (id: number) => {
+  compraDetalle.value = await comprasStore.fetchCompraPorId(id);
   if (!compraDetalle.value) return;
   openDetalleModal.value = true;
 };
 
-const anular = (id: number) => {
-  const compra = compras.value.find(c => c.id === id);
-  if (!compra) return;
-  compra.estado = 2;
-  notification.show("Compra anulada correctamente (mock)", "success");
-  buscarCompras();
-};
-
-const abrirModalPagoProveedor = () => {
-  pagoProveedor.value = { idProveedor: 0, idFormaPago: 0, importe: 0 };
-  pagoProveedorSearch.value = "";
-  pagoProveedorOpen.value = false;
-  openPagarProveedorModal.value = true;
-};
-
-const cerrarModalPagoProveedor = () => {
-  openPagarProveedorModal.value = false;
-};
-const seleccionarProveedorPago = (proveedor: ProveedorMock) => {
-  pagoProveedor.value.idProveedor = proveedor.id;
-  pagoProveedorSearch.value = proveedor.razonSocial;
-  pagoProveedorOpen.value = false;
-};
-const limpiarPagoProveedor = () => {
-  pagoProveedor.value.idProveedor = 0;
-  pagoProveedorSearch.value = "";
-};
-
-const guardarPagoProveedor = () => {
-  const { idProveedor, idFormaPago, importe } = pagoProveedor.value;
-  if (idProveedor <= 0) return notification.show("Debe seleccionar un proveedor", "error");
-  if (idFormaPago <= 0) return notification.show("Debe seleccionar una forma de pago", "error");
-  if (importe <= 0) return notification.show("El importe debe ser mayor a 0", "error");
-
-  let restante = importe;
-  const pendientes = compras.value
-    .filter(c => c.idProveedor === idProveedor && c.estado === 1 && c.saldoPendiente > 0)
-    .sort((a, b) => new Date(a.fecha).getTime() - new Date(b.fecha).getTime());
-
-  if (!pendientes.length) return notification.show("El proveedor no tiene compras pendientes", "error");
-
-  for (const compra of pendientes) {
-    if (restante <= 0) break;
-    const monto = Math.min(compra.saldoPendiente, restante);
-    compra.pagos.push({
-      id: compra.pagos.length + 1,
-      idFormaPago,
-      importe: monto,
-      referencia: "Pago proveedor (mock)",
-    });
-    compra.totalPagado += monto;
-    compra.saldoPendiente -= monto;
-    restante -= monto;
-  }
-
-  openPagarProveedorModal.value = false;
-  buscarCompras();
-  notification.show("Pago registrado correctamente (mock)", "success");
+const anular = async (id: number) => {
+  const ok = await comprasStore.cancelarCompra(id);
+  if (!ok) return;
+  await Promise.all([
+    buscarCompras(),
+    productosStore.fetchProductos(),
+  ]);
 };
 
 const nombreProveedor = (idProveedor: number) => {
-  const p = proveedores.value.find(x => x.id === idProveedor);
-  return p?.razonSocial || `Proveedor #${idProveedor}`;
+  const proveedor = proveedoresStore.proveedores.find(x => x.id === idProveedor);
+  return proveedor?.razonSocial || `Proveedor #${idProveedor}`;
 };
 
 const nombreFormaPago = (idFormaPago: number) => {
-  const f = formasDePago.value.find(x => x.id === idFormaPago);
-  return f?.nombre || `Forma #${idFormaPago}`;
+  const forma = formasDePagoStore.formasDePago.find(x => x.id === idFormaPago);
+  return forma?.nombre || `Forma #${idFormaPago}`;
 };
 
 const nombreProducto = (idProducto: number) => {
-  const p = productos.value.find(x => x.id === idProducto);
-  return p?.nombre || `Producto #${idProducto}`;
+  const producto = productosStore.productos.find(x => x.id === idProducto);
+  return producto?.nombre || `Producto #${idProducto}`;
+};
+
+const stockProducto = (idProducto: number) => {
+  const producto = productosStore.productos.find(x => x.id === idProducto);
+  return producto?.stockActual ?? "-";
+};
+
+const precioCompraProducto = (idProducto: number) => {
+  const producto = productosStore.productos.find(x => x.id === idProducto);
+  return money(producto?.precioCompra ?? 0);
 };
 
 const money = (value: number) =>
   new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", minimumFractionDigits: 2 }).format(value || 0);
+
 const formatoMiles = (value: number) => new Intl.NumberFormat("es-AR", { maximumFractionDigits: 0 }).format(value || 0);
 
 const formatDate = (value: string) => {
   if (!value) return "-";
-  return new Date(value).toLocaleDateString("es-AR");
+  return parseApiDate(value).toLocaleDateString("es-AR");
 };
 
 const handleClickOutside = (event: MouseEvent) => {
   const target = event.target as Node;
   if (proveedorBox.value && !proveedorBox.value.contains(target)) proveedorOpen.value = false;
   if (productoBox.value && !productoBox.value.contains(target)) productoOpen.value = false;
-  if (pagoProveedorBox.value && !pagoProveedorBox.value.contains(target)) pagoProveedorOpen.value = false;
 };
 
-onMounted(() => {
+onMounted(async () => {
   document.addEventListener("click", handleClickOutside);
+  await Promise.all([
+    proveedoresStore.fetchProveedores(),
+    productosStore.fetchProductos(),
+    formasDePagoStore.fetchFormasDePago(),
+    buscarCompras(),
+  ]);
 });
 
 onBeforeUnmount(() => {
   document.removeEventListener("click", handleClickOutside);
 });
-
-buscarCompras();
 </script>
-
-
-
-
-

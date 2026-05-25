@@ -284,6 +284,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from "vue";
+import { formatDateTimeEsAr } from "@/utils/date";
 import { getAuthUser } from "@/modules/auth/session";
 import { useNotificationStore } from "@/stores/notificaciones";
 import { useProductosStore } from "@/modules/productos/store";
@@ -389,7 +390,7 @@ const nombreProducto = (idProducto: number) => {
 };
 
 const formatearFecha = (valor: string) => {
-  return new Date(valor).toLocaleString("es-AR");
+  return formatDateTimeEsAr(valor);
 };
 
 const stockProducto = (idProducto: number) => {

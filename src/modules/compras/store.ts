@@ -10,6 +10,13 @@ import {
   pagarProveedor,
 } from "./services";
 
+const getApiMessage = (err: any, fallback: string) =>
+  err.response?.data?.error ||
+  err.response?.data?.Error ||
+  err.response?.data?.mensaje ||
+  err.response?.data?.Mensaje ||
+  fallback;
+
 export const useComprasStore = defineStore("compras", () => {
   const compras = ref<Compra[]>([]);
   const compraSeleccionada = ref<Compra | null>(null);
@@ -23,7 +30,7 @@ export const useComprasStore = defineStore("compras", () => {
       error.value = null;
       compras.value = await obtenerComprasEntreFechas(desde, hasta);
     } catch (err: any) {
-      const message = err.response?.data?.error || "No se pudieron obtener las compras";
+      const message = getApiMessage(err, "No se pudieron obtener las compras");
       error.value = message;
       notification.show(message, "error");
     } finally {
@@ -37,7 +44,7 @@ export const useComprasStore = defineStore("compras", () => {
       compraSeleccionada.value = await obtenerCompraPorId(id);
       return compraSeleccionada.value;
     } catch (err: any) {
-      const message = err.response?.data?.error || "No se pudo obtener la compra";
+      const message = getApiMessage(err, "No se pudo obtener la compra");
       error.value = message;
       notification.show(message, "error");
       return null;
@@ -51,7 +58,7 @@ export const useComprasStore = defineStore("compras", () => {
       notification.show(resp.mensaje || "Compra creada correctamente", "success");
       return resp.idCompra;
     } catch (err: any) {
-      const message = err.response?.data?.error || "Error al crear la compra";
+      const message = getApiMessage(err, "Error al crear la compra");
       error.value = message;
       notification.show(message, "error");
       return null;
@@ -65,7 +72,7 @@ export const useComprasStore = defineStore("compras", () => {
       notification.show(resp.mensaje || "Compra anulada correctamente", "success");
       return true;
     } catch (err: any) {
-      const message = err.response?.data?.error || "Error al anular la compra";
+      const message = getApiMessage(err, "Error al anular la compra");
       error.value = message;
       notification.show(message, "error");
       return false;
@@ -79,7 +86,7 @@ export const useComprasStore = defineStore("compras", () => {
       notification.show(resp.mensaje || "Pago registrado correctamente", "success");
       return true;
     } catch (err: any) {
-      const message = err.response?.data?.error || "Error al registrar el pago";
+      const message = getApiMessage(err, "Error al registrar el pago");
       error.value = message;
       notification.show(message, "error");
       return false;

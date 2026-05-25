@@ -288,6 +288,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from "vue";
+import { formatDateTimeEsAr } from "@/utils/date";
 import { ajustarStock, obtenerAjustesStock } from "@/modules/ajustesStock/services";
 import type { AjusteStockLecturaDto } from "@/modules/ajustesStock/types";
 import { useProductosStore } from "@/modules/productos/store";
@@ -470,7 +471,7 @@ const guardarEdicion = async () => {
 };
 
 const formatearFecha = (fecha: string) => {
-  return new Date(fecha).toLocaleString("es-AR");
+  return formatDateTimeEsAr(fecha);
 };
 
 onMounted(async () => {
