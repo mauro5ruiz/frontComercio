@@ -2,7 +2,10 @@ import api from "@/plugins/axios";
 import type {
   Proveedor,
   CrearProveedorDTO,
-  ActualizarProveedorDTO
+  ActualizarProveedorDTO,
+  ObtenerCuentaCorrienteQuery,
+  ProveedorCuentaCorriente,
+  PagarProveedorDTO
 } from "./types";
 
 const appendIfPresent = (formData: FormData, key: string, value: string | undefined | null) => {
@@ -56,6 +59,21 @@ export const obtenerProveedores = async (incluirEliminados = false): Promise<Pro
 //
 export const obtenerProveedorPorId = async (id: number): Promise<Proveedor> => {
   const { data } = await api.get(`/proveedores/${id}`);
+  return data;
+};
+
+export const obtenerCuentaCorrienteProveedor = async (
+  id: number,
+  query: ObtenerCuentaCorrienteQuery,
+): Promise<ProveedorCuentaCorriente> => {
+  const { data } = await api.get(`/proveedores/${id}/cuenta-corriente`, {
+    params: query,
+  });
+  return data;
+};
+
+export const pagarProveedor = async (dto: PagarProveedorDTO): Promise<{ mensaje: string }> => {
+  const { data } = await api.post("/proveedores/pagar-proveedor", dto);
   return data;
 };
 

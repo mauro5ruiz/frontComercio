@@ -49,3 +49,48 @@ export interface ActualizarProveedorDTO {
   eliminarImagen?: boolean;
   activo?: boolean;
 }
+
+export interface ObtenerCuentaCorrienteQuery {
+  desde?: string;
+  hasta?: string;
+  soloPendientes?: boolean;
+}
+
+export interface ProveedorCompraPendiente {
+  idCompra: number;
+  fecha: string;
+  comprobante: string;
+  total: number;
+  pagado: number;
+  saldoPendiente: number;
+}
+
+export interface ProveedorMovimiento {
+  tipo: string;
+  idCompra?: number | null;
+  idPago?: number | null;
+  fecha: string;
+  comprobante: string;
+  formaPago?: string | null;
+  referencia?: string | null;
+  importe: number;
+  totalCompra?: number | null;
+  pagadoCompra?: number | null;
+  saldoPendienteCompra?: number | null;
+}
+
+export interface ProveedorCuentaCorriente {
+  idProveedor: number;
+  proveedor: string;
+  saldoTotalPendiente: number;
+  totalComprado: number;
+  totalPagado: number;
+  comprasPendientes: ProveedorCompraPendiente[];
+  movimientos: ProveedorMovimiento[];
+}
+
+export interface PagarProveedorDTO {
+  idProveedor: number;
+  importe: number;
+  idFormaPago: number;
+}

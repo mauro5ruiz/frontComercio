@@ -3,7 +3,9 @@ import { ref } from "vue";
 import type {
   Proveedor,
   CrearProveedorDTO,
-  ActualizarProveedorDTO
+  ActualizarProveedorDTO,
+  ProveedorCuentaCorriente,
+  PagarProveedorDTO
 } from "./types";
 import {
   obtenerProveedores,
@@ -11,12 +13,15 @@ import {
   actualizarProveedor,
   eliminarProveedor,
   desactivarProveedor,
-  activarProveedor
+  activarProveedor,
+  obtenerCuentaCorrienteProveedor,
+  pagarProveedor
 } from "./services";
 import { useNotificationStore } from "@/stores/notificaciones";
 
 export const useProveedoresStore = defineStore("proveedores", () => {
   const proveedores = ref<Proveedor[]>([]);
+  const cuentaCorriente = ref<ProveedorCuentaCorriente | null>(null);
   const loading = ref(false);
   const error = ref<string | null>(null);
   const notification = useNotificationStore();
@@ -29,6 +34,30 @@ export const useProveedoresStore = defineStore("proveedores", () => {
     try {
       proveedores.value = await obtenerProveedores(incluirEliminados);
       console.log("Proveedores cargados:", proveedores.value);
+    } finally {
+      loading.value = false;
+    }
+  };
+
+  const fetchCuentaCorriente = async (
+    idProveedor: number,
+    desde?: string,
+    hasta?: string,
+    soloPendientes?: boolean,
+  ) => {
+    loading.value = true;
+    try {
+      error.value = null;
+      cuentaCorriente.value = await obtenerCuentaCorrienteProveedor(idProveedor, { desde, hasta, soloPendientes });
+      return cuentaCorriente.value;
+    } catch (err: any) {
+      const message =
+        err.response?.data?.error ||
+        err.response?.data?.Error ||
+        "No se pudo obtener la cuenta corriente del proveedor";
+      error.value = message;
+      notification.show(message, "error");
+      return null;
     } finally {
       loading.value = false;
     }
@@ -154,15 +183,37 @@ export const useProveedoresStore = defineStore("proveedores", () => {
     }
   };
 
+  const registrarPagoProveedor = async (dto: PagarProveedorDTO) => {
+    try {
+      error.value = null;
+      const resp = await pagarProveedor(dto);
+      notification.show(resp.mensaje || "Pago registrado correctamente", "success");
+      return true;
+    } catch (err: any) {
+      const message =
+        err.response?.data?.error ||
+        err.response?.data?.Error ||
+        err.response?.data?.mensaje ||
+        err.response?.data?.Mensaje ||
+        "Error al registrar el pago";
+      error.value = message;
+      notification.show(message, "error");
+      return false;
+    }
+  };
+
   return {
     proveedores,
+    cuentaCorriente,
     loading,
     error,
     fetchProveedores,
+    fetchCuentaCorriente,
     addProveedor,
     editProveedor,
     removeProveedor,
     desactivar,
-    activar
+    activar,
+    registrarPagoProveedor
   };
 });

@@ -60,9 +60,67 @@
               {{ c.estado === 2 ? "Anulada" : "Activa" }}
             </span>
           </td>
-          <td class="p-2 text-right">
-            <button @click="verDetalle(c.id)" class="text-blue-500 mr-2">Ver</button>
-            <button v-if="c.estado !== 2" @click="anular(c.id)" class="text-red-500">Anular</button>
+          <td class="p-2">
+            <div class="flex items-center justify-end gap-2">
+              <button
+                v-if="c.estado !== 2 && c.saldoPendiente > 0"
+                @click="abrirPagoCompra(c)"
+                class="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-md text-emerald-600 transition hover:bg-emerald-50"
+                title="Pagar compra"
+                type="button"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  class="h-5 w-5"
+                  aria-hidden="true"
+                >
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v18" />
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 7.5c0-1.9-2-3.5-4.5-3.5S7.5 5.6 7.5 7.5 9.5 11 12 11s4.5 1.6 4.5 3.5S14.5 18 12 18s-4.5-1.6-4.5-3.5" />
+                </svg>
+              </button>
+              <button
+                @click="verDetalle(c.id)"
+                class="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-md text-blue-500 transition hover:bg-blue-50"
+                title="Ver detalle"
+                type="button"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  class="h-5 w-5"
+                  aria-hidden="true"
+                >
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12Z" />
+                  <circle cx="12" cy="12" r="3" />
+                </svg>
+              </button>
+              <button
+                v-if="c.estado !== 2"
+                @click="anular(c.id)"
+                class="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-md text-red-500 transition hover:bg-red-50"
+                title="Anular compra"
+                type="button"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  class="h-5 w-5"
+                  aria-hidden="true"
+                >
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M3 6h18" />
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M8 6V4h8v2" />
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M19 6l-1 14H6L5 6" />
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M10 11v6M14 11v6" />
+                </svg>
+              </button>
+            </div>
           </td>
         </tr>
         <tr v-if="!comprasStore.loading && comprasFiltradas.length === 0">
@@ -328,6 +386,103 @@
       </div>
     </div>
 
+    <div
+      v-if="openPagoModal && compraPagoSeleccionada"
+      class="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-50"
+    >
+      <div class="bg-white rounded-lg shadow-lg w-full max-w-4xl p-6 max-h-[90vh] overflow-y-auto">
+        <div class="flex items-start justify-between gap-4 mb-4">
+          <div>
+            <h2 class="text-lg font-bold text-gray-800">Pagar compra</h2>
+            <p class="text-sm text-gray-500">
+              {{ compraPagoSeleccionada.numeroComprobante }} - {{ nombreProveedor(compraPagoSeleccionada.idProveedor) }}
+            </p>
+          </div>
+          <button @click="cerrarPagoCompra" class="px-3 py-2 rounded bg-gray-200 hover:bg-gray-300">Cerrar</button>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+          <div class="rounded-lg border bg-slate-50 px-4 py-3">
+            <div class="text-xs uppercase tracking-wide text-slate-500">Total</div>
+            <div class="mt-1 text-2xl font-semibold text-slate-900">{{ money(compraPagoSeleccionada.total) }}</div>
+          </div>
+          <div class="rounded-lg border bg-slate-50 px-4 py-3">
+            <div class="text-xs uppercase tracking-wide text-slate-500">Total pagado</div>
+            <div class="mt-1 text-2xl font-semibold text-slate-900">{{ money(compraPagoSeleccionada.totalPagado) }}</div>
+          </div>
+          <div class="rounded-lg border bg-slate-50 px-4 py-3">
+            <div class="text-xs uppercase tracking-wide text-slate-500">Saldo pendiente</div>
+            <div class="mt-1 text-2xl font-semibold text-slate-900">{{ money(compraPagoSeleccionada.saldoPendiente) }}</div>
+          </div>
+        </div>
+
+        <div class="rounded-lg border mb-4 overflow-hidden">
+          <div class="border-b bg-gray-50 px-4 py-3">
+            <h3 class="font-semibold text-gray-800">Resumen de la compra</h3>
+            <p class="text-xs text-gray-500">Detalle simple para decidir cuanto pagar.</p>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full min-w-[680px]">
+              <thead class="bg-white text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
+                <tr>
+                  <th class="px-4 py-3">Fecha</th>
+                  <th class="px-4 py-3">Comprobante</th>
+                  <th class="px-4 py-3 text-right">Total</th>
+                  <th class="px-4 py-3 text-right">Pagado</th>
+                  <th class="px-4 py-3 text-right">Pendiente</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y">
+                <tr class="hover:bg-gray-50">
+                  <td class="px-4 py-3 text-sm text-gray-700">{{ formatDate(compraPagoSeleccionada.fecha) }}</td>
+                  <td class="px-4 py-3 text-sm font-medium text-gray-800">{{ compraPagoSeleccionada.numeroComprobante }}</td>
+                  <td class="px-4 py-3 text-sm text-right text-gray-700">{{ money(compraPagoSeleccionada.total) }}</td>
+                  <td class="px-4 py-3 text-sm text-right text-emerald-700">{{ money(compraPagoSeleccionada.totalPagado) }}</td>
+                  <td class="px-4 py-3 text-sm text-right font-semibold text-amber-700">{{ money(compraPagoSeleccionada.saldoPendiente) }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="rounded-lg border p-4">
+          <h3 class="font-semibold text-gray-800 mb-3">Registrar pago</h3>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div>
+              <label class="text-sm text-gray-700">Forma de pago *</label>
+              <select v-model.number="pagoCompraForm.idFormaPago" class="w-full border px-3 py-2 rounded-md">
+                <option :value="0">Seleccionar</option>
+                <option v-for="forma in formasDePago" :key="forma.id" :value="forma.id">{{ forma.nombre }}</option>
+              </select>
+            </div>
+            <div>
+              <div class="flex items-center justify-between gap-3">
+                <label class="text-sm text-gray-700">Importe *</label>
+                <button
+                  v-if="compraPagoSeleccionada.saldoPendiente > 0"
+                  type="button"
+                  class="text-sm text-emerald-700 hover:text-emerald-800"
+                  @click="usarSaldoPendienteCompra"
+                >
+                  Usar saldo
+                </button>
+              </div>
+              <input v-model.number="pagoCompraForm.importe" type="number" min="0.01" step="0.01" class="w-full border px-3 py-2 rounded-md" />
+            </div>
+            <div class="flex items-end">
+              <button
+                @click="guardarPagoCompra"
+                :disabled="compraPagoSeleccionada.saldoPendiente <= 0"
+                class="w-full bg-emerald-600 text-white px-4 py-2 rounded hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-emerald-300"
+              >
+                Registrar pago
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
   </div>
 </template>
 
@@ -353,8 +508,11 @@ const toLocalInputDate = (date: Date) =>
   `${date.getFullYear()}-${padDatePart(date.getMonth() + 1)}-${padDatePart(date.getDate())}`;
 const parseApiDate = (value: string) => {
   if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
-    const [year, month, day] = value.split("-").map(Number);
-    return new Date(year, (month || 1) - 1, day || 1);
+    const parts = value.split("-").map(Number);
+    const year = parts[0] ?? 0;
+    const month = parts[1] ?? 1;
+    const day = parts[2] ?? 1;
+    return new Date(year, month - 1, day);
   }
   return new Date(value);
 };
@@ -369,7 +527,9 @@ const pageSize = 10;
 
 const openModal = ref(false);
 const openDetalleModal = ref(false);
+const openPagoModal = ref(false);
 const compraDetalle = ref<Compra | null>(null);
+const compraPagoSeleccionada = ref<Compra | null>(null);
 const proveedorOpen = ref(false);
 const productoOpen = ref(false);
 const proveedorSearch = ref("");
@@ -393,6 +553,10 @@ const nuevoDetalle = ref({
 });
 
 const pagarTodo = ref(false);
+const pagoCompraForm = ref({
+  idFormaPago: 0,
+  importe: 0
+});
 
 const proveedores = computed(() => proveedoresStore.proveedores.filter(p => p.activo));
 const productos = computed(() => productosStore.productos.filter(p => p.activo));
@@ -450,6 +614,18 @@ const abrirCrear = () => {
 
 const cerrarModal = () => {
   openModal.value = false;
+};
+
+const abrirPagoCompra = (compra: Compra) => {
+  compraPagoSeleccionada.value = compra;
+  pagoCompraForm.value = { idFormaPago: 0, importe: 0 };
+  openPagoModal.value = true;
+};
+
+const cerrarPagoCompra = () => {
+  openPagoModal.value = false;
+  compraPagoSeleccionada.value = null;
+  pagoCompraForm.value = { idFormaPago: 0, importe: 0 };
 };
 
 const seleccionarProveedor = (proveedor: Proveedor) => {
@@ -593,6 +769,27 @@ const anular = async (id: number) => {
     buscarCompras(),
     productosStore.fetchProductos(),
   ]);
+};
+
+const usarSaldoPendienteCompra = () => {
+  if (!compraPagoSeleccionada.value) return;
+  pagoCompraForm.value.importe = compraPagoSeleccionada.value.saldoPendiente;
+};
+
+const guardarPagoCompra = () => {
+  if (!compraPagoSeleccionada.value) return;
+
+  const { idFormaPago, importe } = pagoCompraForm.value;
+  if (compraPagoSeleccionada.value.saldoPendiente <= 0) {
+    return notification.show("La compra no tiene saldo pendiente para pagar", "error");
+  }
+  if (idFormaPago <= 0) return notification.show("Debe seleccionar una forma de pago", "error");
+  if (importe <= 0) return notification.show("El importe debe ser mayor a 0", "error");
+  if (importe > compraPagoSeleccionada.value.saldoPendiente) {
+    return notification.show("El importe no puede superar el saldo pendiente", "error");
+  }
+
+  notification.show("La interfaz de pago esta lista. Falta conectar el guardado.", "success");
 };
 
 const nombreProveedor = (idProveedor: number) => {

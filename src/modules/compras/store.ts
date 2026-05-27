@@ -1,13 +1,12 @@
 import { defineStore } from "pinia";
 import { ref } from "vue";
 import { useNotificationStore } from "@/stores/notificaciones";
-import type { Compra, CrearCompraDTO, PagarProveedorDTO } from "./types";
+import type { Compra, CrearCompraDTO } from "./types";
 import {
   anularCompra,
   crearCompra,
   obtenerCompraPorId,
   obtenerComprasEntreFechas,
-  pagarProveedor,
 } from "./services";
 
 const getApiMessage = (err: any, fallback: string) =>
@@ -79,20 +78,6 @@ export const useComprasStore = defineStore("compras", () => {
     }
   };
 
-  const registrarPagoProveedor = async (dto: PagarProveedorDTO) => {
-    try {
-      error.value = null;
-      const resp = await pagarProveedor(dto);
-      notification.show(resp.mensaje || "Pago registrado correctamente", "success");
-      return true;
-    } catch (err: any) {
-      const message = getApiMessage(err, "Error al registrar el pago");
-      error.value = message;
-      notification.show(message, "error");
-      return false;
-    }
-  };
-
   return {
     compras,
     compraSeleccionada,
@@ -102,6 +87,5 @@ export const useComprasStore = defineStore("compras", () => {
     fetchCompraPorId,
     addCompra,
     cancelarCompra,
-    registrarPagoProveedor,
   };
 });

@@ -59,28 +59,127 @@
               {{ proveedor.activo ? "Si" : "No" }}
             </span>
           </td>
-          <td class="p-2 text-right">
-            <button @click="abrirCuentaCorriente(proveedor)" class="text-emerald-600 mr-2">
-              Cuenta corriente
-            </button>
-            <button @click="abrirEdicion(proveedor)" class="text-blue-500 mr-2">Editar</button>
-            <button
-              v-if="proveedor.activo"
-              @click="desactivar(proveedor.id)"
-              class="text-yellow-500 mr-2"
-              title="Desactivar"
-            >
-              Desactivar
-            </button>
-            <button
-              v-else
-              @click="activar(proveedor.id)"
-              class="text-green-500 mr-2"
-              title="Activar"
-            >
-              Activar
-            </button>
-            <button @click="abrirConfirmacion(proveedor.id)" class="text-red-500">Eliminar</button>
+          <td class="p-2">
+            <div class="flex items-center justify-end gap-2">
+              <button
+                @click="abrirResumenCuentaCorriente(proveedor)"
+                class="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-md text-cyan-600 transition hover:bg-cyan-50"
+                title="Ver cuenta corriente"
+                type="button"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  class="h-5 w-5"
+                  aria-hidden="true"
+                >
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M5 4h11l3 3v13H5z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M16 4v4h4" />
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M8 12h8" />
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M8 16h5" />
+                </svg>
+              </button>
+
+              <button
+                @click="abrirPagoProveedor(proveedor)"
+                class="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-md text-emerald-600 transition hover:bg-emerald-50"
+                title="Pagar proveedor"
+                type="button"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  class="h-5 w-5"
+                  aria-hidden="true"
+                >
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v18" />
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 7.5c0-1.9-2-3.5-4.5-3.5S7.5 5.6 7.5 7.5 9.5 11 12 11s4.5 1.6 4.5 3.5S14.5 18 12 18s-4.5-1.6-4.5-3.5" />
+                </svg>
+              </button>
+
+              <button
+                @click="abrirEdicion(proveedor)"
+                class="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-md text-blue-500 transition hover:bg-blue-50"
+                title="Editar proveedor"
+                type="button"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  class="h-5 w-5"
+                  aria-hidden="true"
+                >
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 20h9" />
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5Z" />
+                </svg>
+              </button>
+
+              <button
+                v-if="proveedor.activo"
+                @click="desactivar(proveedor.id)"
+                class="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-md text-yellow-500 transition hover:bg-yellow-50"
+                title="Desactivar"
+                type="button"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  class="h-5 w-5"
+                  aria-hidden="true"
+                >
+                  <circle cx="12" cy="12" r="9" />
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M8 16 16 8" />
+                </svg>
+              </button>
+
+              <button
+                v-else
+                @click="activar(proveedor.id)"
+                class="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-md text-green-500 transition hover:bg-green-50"
+                title="Activar"
+                type="button"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  class="h-5 w-5"
+                  aria-hidden="true"
+                >
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M20 6 9 17l-5-5" />
+                </svg>
+              </button>
+
+              <button
+                @click="abrirConfirmacion(proveedor.id)"
+                class="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-md text-red-500 transition hover:bg-red-50"
+                title="Eliminar proveedor"
+                type="button"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  class="h-5 w-5"
+                  aria-hidden="true"
+                >
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M3 6h18" />
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M8 6V4h8v2" />
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M19 6l-1 14H6L5 6" />
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M10 11v6M14 11v6" />
+                </svg>
+              </button>
+            </div>
           </td>
         </tr>
 
@@ -302,8 +401,7 @@
     </div>
 
     <div
-      v-if="openCuentaCorrienteModal && proveedorCuentaCorriente"
-      @click.self="cerrarCuentaCorriente"
+      v-if="openResumenCuentaCorrienteModal && proveedorCuentaCorriente"
       class="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-50"
     >
       <div class="bg-white rounded-lg shadow-lg w-full max-w-5xl p-6 max-h-[90vh] overflow-y-auto">
@@ -314,7 +412,127 @@
               {{ proveedorCuentaCorriente.razonSocial }} - {{ proveedorCuentaCorriente.cuit }}
             </p>
           </div>
-          <button @click="cerrarCuentaCorriente" class="px-3 py-2 rounded bg-gray-200 hover:bg-gray-300">Cerrar</button>
+          <button @click="cerrarResumenCuentaCorriente" class="px-3 py-2 rounded bg-gray-200 hover:bg-gray-300">Cerrar</button>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
+          <div>
+            <label class="text-sm text-gray-600">Desde</label>
+            <input
+              v-model="cuentaCorrienteDesde"
+              type="date"
+              :max="cuentaCorrienteHasta || undefined"
+              class="w-full border px-3 py-2 rounded-md"
+              @blur="buscarCuentaCorriente"
+            />
+          </div>
+          <div>
+            <label class="text-sm text-gray-600">Hasta</label>
+            <input
+              v-model="cuentaCorrienteHasta"
+              type="date"
+              :min="cuentaCorrienteDesde || undefined"
+              class="w-full border px-3 py-2 rounded-md"
+              @blur="buscarCuentaCorriente"
+            />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+          <div class="rounded-lg border bg-slate-50 px-4 py-3">
+            <div class="text-xs uppercase tracking-wide text-slate-500">Total comprado</div>
+            <div class="mt-1 text-2xl font-semibold text-slate-900">{{ money(cuentaCorriente?.totalComprado ?? 0) }}</div>
+          </div>
+          <div class="rounded-lg border bg-slate-50 px-4 py-3">
+            <div class="text-xs uppercase tracking-wide text-slate-500">Total pagado</div>
+            <div class="mt-1 text-2xl font-semibold text-slate-900">{{ money(cuentaCorriente?.totalPagado ?? 0) }}</div>
+          </div>
+          <div class="rounded-lg border bg-slate-50 px-4 py-3">
+            <div class="text-xs uppercase tracking-wide text-slate-500">Saldo pendiente</div>
+            <div class="mt-1 text-2xl font-semibold text-slate-900">{{ money(cuentaCorriente?.saldoTotalPendiente ?? 0) }}</div>
+          </div>
+        </div>
+
+        <div class="rounded-lg border mb-4 overflow-hidden">
+          <div class="border-b bg-gray-50 px-4 py-3">
+            <h3 class="font-semibold text-gray-800">Compras del proveedor</h3>
+            <p class="text-xs text-gray-500">Vista simple de compras con total, pagado y saldo pendiente.</p>
+          </div>
+          <div v-if="comprasCuentaCorriente.length" class="overflow-x-auto">
+            <table class="w-full min-w-[720px]">
+              <thead class="bg-white text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
+                <tr>
+                  <th class="px-4 py-3">Fecha</th>
+                  <th class="px-4 py-3">Comprobante</th>
+                  <th class="px-4 py-3 text-right">Total</th>
+                  <th class="px-4 py-3 text-right">Pagado</th>
+                  <th class="px-4 py-3 text-right">Pendiente</th>
+                  <th class="px-4 py-3 text-right">Accion</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y">
+                <tr v-for="compra in comprasCuentaCorrientePaginadas" :key="compra.idCompra" class="hover:bg-gray-50">
+                  <td class="px-4 py-3 text-sm text-gray-700">{{ formatDate(compra.fecha) }}</td>
+                  <td class="px-4 py-3">
+                    <div class="font-medium text-gray-800">{{ compra.comprobante }}</div>
+                  </td>
+                  <td class="px-4 py-3 text-sm text-right text-gray-700">{{ money(compra.total) }}</td>
+                  <td class="px-4 py-3 text-sm text-right text-emerald-700">{{ money(compra.pagado) }}</td>
+                  <td class="px-4 py-3 text-sm text-right font-semibold text-amber-700">{{ money(compra.saldoPendiente) }}</td>
+                  <td class="px-4 py-3 text-right">
+                    <button
+                      type="button"
+                      class="cursor-pointer rounded-md border px-3 py-1.5 text-sm text-slate-700 transition hover:bg-slate-50"
+                      @click="verDetalleCompraCuentaCorriente(compra.idCompra)"
+                    >
+                      Ver mas
+                    </button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div v-if="comprasCuentaCorriente.length" class="flex items-center justify-between border-t bg-white px-4 py-3">
+            <span class="text-sm text-gray-500">Pagina {{ cuentaCorrientePage }} de {{ totalPaginasCuentaCorriente }}</span>
+            <div class="flex items-center gap-2">
+              <button
+                type="button"
+                class="rounded-md border px-3 py-1.5 text-sm transition disabled:cursor-not-allowed disabled:opacity-50"
+                :disabled="cuentaCorrientePage === 1"
+                @click="cuentaCorrientePage--"
+              >
+                Anterior
+              </button>
+              <button
+                type="button"
+                class="rounded-md border px-3 py-1.5 text-sm transition disabled:cursor-not-allowed disabled:opacity-50"
+                :disabled="cuentaCorrientePage === totalPaginasCuentaCorriente"
+                @click="cuentaCorrientePage++"
+              >
+                Siguiente
+              </button>
+            </div>
+          </div>
+          <div v-else class="px-4 py-6 text-sm text-gray-400">
+            No hay compras para este proveedor en el rango seleccionado.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div
+      v-if="openPagoProveedorModal && proveedorCuentaCorriente"
+      class="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-50"
+    >
+      <div class="bg-white rounded-lg shadow-lg w-full max-w-3xl p-6 max-h-[90vh] overflow-y-auto">
+        <div class="flex items-start justify-between gap-4 mb-4">
+          <div>
+            <h2 class="text-lg font-bold text-gray-800">Pagar proveedor</h2>
+            <p class="text-sm text-gray-500">
+              {{ proveedorCuentaCorriente.razonSocial }} - {{ proveedorCuentaCorriente.cuit }}
+            </p>
+          </div>
+          <button @click="cerrarPagoProveedor" class="px-3 py-2 rounded bg-gray-200 hover:bg-gray-300">Cerrar</button>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
@@ -346,67 +564,44 @@
             <div class="mt-1 text-2xl font-semibold text-slate-900">{{ money(saldoProveedorSeleccionado) }}</div>
           </div>
           <div class="rounded-lg border bg-slate-50 px-4 py-3">
-            <div class="text-xs uppercase tracking-wide text-slate-500">Compras pendientes</div>
-            <div class="mt-1 text-2xl font-semibold text-slate-900">{{ comprasPendientesProveedor.length }}</div>
+            <div class="text-xs uppercase tracking-wide text-slate-500">Total pagado</div>
+            <div class="mt-1 text-2xl font-semibold text-slate-900">{{ money(cuentaCorriente?.totalPagado ?? 0) }}</div>
           </div>
           <div class="rounded-lg border bg-slate-50 px-4 py-3">
-            <div class="text-xs uppercase tracking-wide text-slate-500">Movimientos detectados</div>
-            <div class="mt-1 text-2xl font-semibold text-slate-900">{{ movimientosProveedor.length }}</div>
+            <div class="text-xs uppercase tracking-wide text-slate-500">Compras con saldo</div>
+            <div class="mt-1 text-2xl font-semibold text-slate-900">{{ comprasPendientesProveedor.length }}</div>
           </div>
         </div>
 
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
-          <div class="rounded-lg border">
-            <div class="border-b bg-gray-50 px-4 py-3">
-              <h3 class="font-semibold text-gray-800">Compras con saldo</h3>
-              <p class="text-xs text-gray-500">Comprobantes pendientes dentro del rango filtrado.</p>
-            </div>
-            <div v-if="comprasPendientesProveedor.length" class="divide-y">
-              <div v-for="compra in comprasPendientesProveedor" :key="compra.id" class="px-4 py-3">
-                <div class="flex items-start justify-between gap-3">
-                  <div>
-                    <div class="font-medium text-gray-800">{{ compra.numeroComprobante }}</div>
-                    <div class="text-sm text-gray-500">{{ formatDate(compra.fecha) }}</div>
-                  </div>
-                  <div class="text-right">
-                    <div class="text-sm text-gray-500">Saldo</div>
-                    <div class="font-semibold text-amber-700">{{ money(compra.saldoPendiente) }}</div>
-                  </div>
-                </div>
-                <div class="mt-2 grid grid-cols-3 gap-2 text-xs text-gray-500">
-                  <div>Total: {{ money(compra.total) }}</div>
-                  <div>Pagado: {{ money(compra.totalPagado) }}</div>
-                  <div>Estado: {{ compra.estado === 2 ? "Anulada" : "Activa" }}</div>
-                </div>
-              </div>
-            </div>
-            <div v-else class="px-4 py-6 text-sm text-gray-400">
-              No hay compras pendientes para este proveedor en el rango seleccionado.
-            </div>
+        <div class="rounded-lg border mb-4 overflow-hidden">
+          <div class="border-b bg-gray-50 px-4 py-3">
+            <h3 class="font-semibold text-gray-800">Compras pendientes</h3>
+            <p class="text-xs text-gray-500">Resumen simple para ver cuanto se compro, cuanto se pago y cuanto queda pendiente.</p>
           </div>
-
-          <div class="rounded-lg border">
-            <div class="border-b bg-gray-50 px-4 py-3">
-              <h3 class="font-semibold text-gray-800">Movimientos</h3>
-              <p class="text-xs text-gray-500">Historial de compras y pagos registrados.</p>
-            </div>
-            <div v-if="movimientosProveedor.length" class="divide-y">
-              <div v-for="mov in movimientosProveedor" :key="mov.key" class="px-4 py-3">
-                <div class="flex items-start justify-between gap-3">
-                  <div>
-                    <div class="font-medium text-gray-800">{{ mov.titulo }}</div>
-                    <div class="text-sm text-gray-500">{{ mov.fecha }}</div>
-                  </div>
-                  <div class="text-right font-semibold" :class="mov.tipo === 'pago' ? 'text-emerald-700' : 'text-slate-700'">
-                    {{ mov.tipo === "pago" ? "-" : "" }}{{ money(mov.importe) }}
-                  </div>
-                </div>
-                <div class="mt-1 text-xs text-gray-500">{{ mov.descripcion }}</div>
-              </div>
-            </div>
-            <div v-else class="px-4 py-6 text-sm text-gray-400">
-              No hay movimientos para este proveedor en el rango seleccionado.
-            </div>
+          <div v-if="comprasPendientesProveedor.length" class="overflow-x-auto">
+            <table class="w-full min-w-[680px]">
+              <thead class="bg-white text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
+                <tr>
+                  <th class="px-4 py-3">Fecha</th>
+                  <th class="px-4 py-3">Comprobante</th>
+                  <th class="px-4 py-3 text-right">Total</th>
+                  <th class="px-4 py-3 text-right">Pagado</th>
+                  <th class="px-4 py-3 text-right">Pendiente</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y">
+                <tr v-for="compra in comprasPendientesProveedor" :key="compra.idCompra" class="hover:bg-gray-50">
+                  <td class="px-4 py-3 text-sm text-gray-700">{{ formatDate(compra.fecha) }}</td>
+                  <td class="px-4 py-3 text-sm font-medium text-gray-800">{{ compra.comprobante }}</td>
+                  <td class="px-4 py-3 text-sm text-right text-gray-700">{{ money(compra.total) }}</td>
+                  <td class="px-4 py-3 text-sm text-right text-emerald-700">{{ money(compra.pagado) }}</td>
+                  <td class="px-4 py-3 text-sm text-right font-semibold text-amber-700">{{ money(compra.saldoPendiente) }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div v-else class="px-4 py-6 text-sm text-gray-400">
+            No hay compras pendientes para este proveedor en el rango seleccionado.
           </div>
         </div>
 
@@ -435,11 +630,102 @@
               <input v-model.number="pagoCuentaCorriente.importe" type="number" min="0.01" step="0.01" class="w-full border px-3 py-2 rounded-md" />
             </div>
             <div class="flex items-end">
-              <button @click="guardarPagoCuentaCorriente" class="w-full bg-emerald-600 text-white px-4 py-2 rounded hover:bg-emerald-700">
+              <button
+                @click="guardarPagoCuentaCorriente"
+                :disabled="saldoProveedorSeleccionado <= 0"
+                class="w-full bg-emerald-600 text-white px-4 py-2 rounded hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-emerald-300"
+              >
                 Registrar pago
               </button>
             </div>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <div
+      v-if="openDetalleCompraModal && compraDetalleCuentaCorriente"
+      @click.self="cerrarDetalleCompraCuentaCorriente"
+      class="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-50"
+    >
+      <div class="bg-white rounded-lg shadow-lg w-full max-w-4xl p-6 max-h-[90vh] overflow-y-auto">
+        <div class="flex items-start justify-between gap-4 mb-4">
+          <div>
+            <h2 class="text-lg font-bold text-gray-800">Detalle de compra</h2>
+            <p class="text-sm text-gray-500">
+              {{ compraDetalleCuentaCorriente.numeroComprobante }} - {{ formatDate(compraDetalleCuentaCorriente.fecha) }}
+            </p>
+          </div>
+          <button @click="cerrarDetalleCompraCuentaCorriente" class="px-3 py-2 rounded bg-gray-200 hover:bg-gray-300">Cerrar</button>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+          <div class="rounded-lg border bg-slate-50 px-4 py-3">
+            <div class="text-xs uppercase tracking-wide text-slate-500">Total</div>
+            <div class="mt-1 text-xl font-semibold text-slate-900">{{ money(compraDetalleCuentaCorriente.total) }}</div>
+          </div>
+          <div class="rounded-lg border bg-slate-50 px-4 py-3">
+            <div class="text-xs uppercase tracking-wide text-slate-500">Pagado</div>
+            <div class="mt-1 text-xl font-semibold text-emerald-700">{{ money(compraDetalleCuentaCorriente.totalPagado) }}</div>
+          </div>
+          <div class="rounded-lg border bg-slate-50 px-4 py-3">
+            <div class="text-xs uppercase tracking-wide text-slate-500">Pendiente</div>
+            <div class="mt-1 text-xl font-semibold text-amber-700">{{ money(compraDetalleCuentaCorriente.saldoPendiente) }}</div>
+          </div>
+        </div>
+
+        <div class="rounded-lg border mb-4 overflow-hidden">
+          <div class="border-b bg-gray-50 px-4 py-3">
+            <h3 class="font-semibold text-gray-800">Productos</h3>
+          </div>
+          <div v-if="(compraDetalleCuentaCorriente.detalles || []).length" class="overflow-x-auto">
+            <table class="w-full min-w-[640px]">
+              <thead class="bg-white text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
+                <tr>
+                  <th class="px-4 py-3">Producto</th>
+                  <th class="px-4 py-3 text-right">Cantidad</th>
+                  <th class="px-4 py-3 text-right">Precio unitario</th>
+                  <th class="px-4 py-3 text-right">Subtotal</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y">
+                <tr v-for="(detalle, index) in compraDetalleCuentaCorriente.detalles || []" :key="detalle.id ?? `${detalle.idProducto}-${index}`">
+                  <td class="px-4 py-3 text-sm text-gray-700">{{ nombreProducto(detalle.idProducto) }}</td>
+                  <td class="px-4 py-3 text-sm text-right text-gray-700">{{ detalle.cantidad }}</td>
+                  <td class="px-4 py-3 text-sm text-right text-gray-700">{{ money(detalle.precioUnitario) }}</td>
+                  <td class="px-4 py-3 text-sm text-right text-gray-700">{{ money(detalle.subtotal || detalle.cantidad * detalle.precioUnitario) }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div v-else class="px-4 py-6 text-sm text-gray-400">Esta compra no tiene productos cargados.</div>
+        </div>
+
+        <div class="rounded-lg border overflow-hidden">
+          <div class="border-b bg-gray-50 px-4 py-3">
+            <h3 class="font-semibold text-gray-800">Pagos</h3>
+          </div>
+          <div v-if="(compraDetalleCuentaCorriente.pagos || []).length" class="overflow-x-auto">
+            <table class="w-full min-w-[640px]">
+              <thead class="bg-white text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
+                <tr>
+                  <th class="px-4 py-3">Fecha</th>
+                  <th class="px-4 py-3">Forma de pago</th>
+                  <th class="px-4 py-3">Referencia</th>
+                  <th class="px-4 py-3 text-right">Importe</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y">
+                <tr v-for="(pago, index) in compraDetalleCuentaCorriente.pagos || []" :key="pago.id ?? `${pago.idFormaPago}-${index}`">
+                  <td class="px-4 py-3 text-sm text-gray-700">{{ pago.fechaPago ? formatDate(pago.fechaPago) : "-" }}</td>
+                  <td class="px-4 py-3 text-sm text-gray-700">{{ nombreFormaPago(pago.idFormaPago) }}</td>
+                  <td class="px-4 py-3 text-sm text-gray-700">{{ pago.referencia || "-" }}</td>
+                  <td class="px-4 py-3 text-sm text-right text-emerald-700">{{ money(pago.importe) }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div v-else class="px-4 py-6 text-sm text-gray-400">No hay pagos registrados para esta compra.</div>
         </div>
       </div>
     </div>
@@ -451,6 +737,7 @@ import { computed, onMounted, ref, watch } from "vue";
 import { useComprasStore } from "@/modules/compras/store";
 import type { Compra } from "@/modules/compras/types";
 import { useFormasDePagoStore } from "@/modules/formasDePagos/store";
+import { useProductosStore } from "@/modules/productos/store";
 import { proveedorSchema } from "@/modules/proveedores/schema";
 import { useProveedoresStore } from "@/modules/proveedores/store";
 import type { Proveedor } from "@/modules/proveedores/types";
@@ -458,16 +745,20 @@ import { useNotificationStore } from "@/stores/notificaciones";
 
 const baseURL = import.meta.env.VITE_FILES_URL;
 const store = useProveedoresStore();
-const comprasStore = useComprasStore();
 const formasDePagoStore = useFormasDePagoStore();
+const productosStore = useProductosStore();
 const notification = useNotificationStore();
+const comprasStore = useComprasStore();
 
 const search = ref("");
 const openModal = ref(false);
 const openDeleteModal = ref(false);
-const openCuentaCorrienteModal = ref(false);
+const openResumenCuentaCorrienteModal = ref(false);
+const openPagoProveedorModal = ref(false);
+const openDetalleCompraModal = ref(false);
 const incluirEliminados = ref(false);
 const proveedorCuentaCorriente = ref<Proveedor | null>(null);
+const compraDetalleCuentaCorriente = ref<Compra | null>(null);
 
 const razonSocial = ref("");
 const cuit = ref("");
@@ -493,10 +784,13 @@ const errores = ref<Record<string, string | undefined>>({});
 
 const page = ref(1);
 const pageSize = 7;
+const cuentaCorrientePage = ref(1);
+const cuentaCorrientePageSize = 5;
 const hoy = new Date();
 const primerDiaMes = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
 const cuentaCorrienteDesde = ref(toLocalInputDate(primerDiaMes));
 const cuentaCorrienteHasta = ref(toLocalInputDate(hoy));
+
 const pagoCuentaCorriente = ref({
   idFormaPago: 0,
   importe: 0
@@ -505,6 +799,7 @@ const pagoCuentaCorriente = ref({
 onMounted(() => {
   store.fetchProveedores(incluirEliminados.value);
   formasDePagoStore.fetchFormasDePago();
+  productosStore.fetchProductos();
 });
 
 watch(incluirEliminados, (nuevoValor) => {
@@ -528,52 +823,30 @@ const proveedoresPaginados = computed(() => {
 });
 
 const formasDePago = computed(() => formasDePagoStore.formasDePago);
-
-const comprasProveedorSeleccionado = computed<Compra[]>(() =>
-  proveedorCuentaCorriente.value
-    ? comprasStore.compras.filter((compra) => compra.idProveedor === proveedorCuentaCorriente.value?.id)
-    : [],
+const productos = computed(() => productosStore.productos);
+const cuentaCorriente = computed(() => store.cuentaCorriente);
+const comprasPendientesProveedor = computed(() => cuentaCorriente.value?.comprasPendientes ?? []);
+const saldoProveedorSeleccionado = computed(() => cuentaCorriente.value?.saldoTotalPendiente ?? 0);
+const comprasCuentaCorriente = computed(() =>
+  (cuentaCorriente.value?.movimientos ?? [])
+    .filter((movimiento) => movimiento.tipo.toLowerCase() === "compra")
+    .map((movimiento) => ({
+      idCompra: movimiento.idCompra ?? 0,
+      fecha: movimiento.fecha,
+      comprobante: movimiento.comprobante,
+      total: movimiento.totalCompra ?? movimiento.importe ?? 0,
+      pagado: movimiento.pagadoCompra ?? 0,
+      saldoPendiente: movimiento.saldoPendienteCompra ?? 0
+    }))
+    .filter((compra) => compra.idCompra > 0)
 );
-
-const comprasPendientesProveedor = computed(() =>
-  comprasProveedorSeleccionado.value
-    .filter((compra) => compra.estado !== 2 && compra.saldoPendiente > 0)
-    .sort((a, b) => +parseApiDate(a.fecha) - +parseApiDate(b.fecha)),
+const totalPaginasCuentaCorriente = computed(() =>
+  Math.max(1, Math.ceil(comprasCuentaCorriente.value.length / cuentaCorrientePageSize))
 );
-
-const saldoProveedorSeleccionado = computed(() =>
-  comprasPendientesProveedor.value.reduce((acc, compra) => acc + (compra.saldoPendiente || 0), 0),
-);
-
-const movimientosProveedor = computed(() =>
-  comprasProveedorSeleccionado.value
-    .flatMap((compra) => {
-      const movimientosCompra = [
-        {
-          key: `compra-${compra.id}`,
-          fechaOrden: parseApiDate(compra.fecha).getTime(),
-          fecha: formatDate(compra.fecha),
-          tipo: "compra" as const,
-          titulo: `Compra ${compra.numeroComprobante}`,
-          descripcion: `Alta de compra por ${money(compra.total)}. Saldo actual ${money(compra.saldoPendiente)}.`,
-          importe: compra.total
-        }
-      ];
-
-      const pagos = (compra.pagos || []).map((pago, index) => ({
-        key: `pago-${compra.id}-${pago.id ?? index}`,
-        fechaOrden: parseApiDate(pago.fechaPago || compra.fecha).getTime(),
-        fecha: formatDate(pago.fechaPago || compra.fecha),
-        tipo: "pago" as const,
-        titulo: `Pago aplicado a ${compra.numeroComprobante}`,
-        descripcion: `${nombreFormaPago(pago.idFormaPago ?? 0)}${pago.referencia ? ` - ${pago.referencia}` : ""}`,
-        importe: pago.importe
-      }));
-
-      return [...movimientosCompra, ...pagos];
-    })
-    .sort((a, b) => b.fechaOrden - a.fechaOrden),
-);
+const comprasCuentaCorrientePaginadas = computed(() => {
+  const start = (cuentaCorrientePage.value - 1) * cuentaCorrientePageSize;
+  return comprasCuentaCorriente.value.slice(start, start + cuentaCorrientePageSize);
+});
 
 function padDatePart(value: number) {
   return String(value).padStart(2, "0");
@@ -585,8 +858,11 @@ function toLocalInputDate(date: Date) {
 
 function parseApiDate(value: string) {
   if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
-    const [year, month, day] = value.split("-").map(Number);
-    return new Date(year, (month || 1) - 1, day || 1);
+    const parts = value.split("-").map(Number);
+    const year = parts[0] ?? 0;
+    const month = parts[1] ?? 1;
+    const day = parts[2] ?? 1;
+    return new Date(year, month - 1, day);
   }
   return new Date(value);
 }
@@ -602,6 +878,14 @@ function money(value: number) {
     currency: "ARS",
     minimumFractionDigits: 2
   }).format(value || 0);
+}
+
+function nombreProducto(idProducto: number) {
+  return productos.value.find((producto) => producto.id === idProducto)?.nombre || `Producto #${idProducto}`;
+}
+
+function nombreFormaPago(idFormaPago: number) {
+  return formasDePago.value.find((forma) => forma.id === idFormaPago)?.nombre || `Forma #${idFormaPago}`;
 }
 
 const onFileChange = (event: Event) => {
@@ -692,7 +976,7 @@ const guardar = async () => {
   const resultado = proveedorSchema.safeParse(formValues);
 
   if (!resultado.success) {
-    const fieldErrors = resultado.error.flatten().fieldErrors;
+    const fieldErrors = resultado.error.flatten().fieldErrors as Record<string, string[] | undefined>;
     for (const key in fieldErrors) {
       errores.value[key] = fieldErrors[key]?.[0];
     }
@@ -762,25 +1046,50 @@ const buscarCuentaCorriente = async () => {
     return;
   }
 
-  await comprasStore.fetchCompras(cuentaCorrienteDesde.value, cuentaCorrienteHasta.value);
+  cuentaCorrientePage.value = 1;
+  await store.fetchCuentaCorriente(
+    proveedorCuentaCorriente.value.id,
+    cuentaCorrienteDesde.value,
+    cuentaCorrienteHasta.value
+  );
 };
 
-const abrirCuentaCorriente = async (proveedor: Proveedor) => {
+const abrirResumenCuentaCorriente = async (proveedor: Proveedor) => {
   proveedorCuentaCorriente.value = proveedor;
-  pagoCuentaCorriente.value = { idFormaPago: 0, importe: 0 };
-  openCuentaCorrienteModal.value = true;
+  cuentaCorrientePage.value = 1;
+  openResumenCuentaCorrienteModal.value = true;
   await buscarCuentaCorriente();
 };
 
-const cerrarCuentaCorriente = () => {
-  openCuentaCorrienteModal.value = false;
+const cerrarResumenCuentaCorriente = () => {
+  openResumenCuentaCorrienteModal.value = false;
+  proveedorCuentaCorriente.value = null;
+  cuentaCorrientePage.value = 1;
+};
+
+const abrirPagoProveedor = async (proveedor: Proveedor) => {
+  proveedorCuentaCorriente.value = proveedor;
+  pagoCuentaCorriente.value = { idFormaPago: 0, importe: 0 };
+  openPagoProveedorModal.value = true;
+  await buscarCuentaCorriente();
+};
+
+const cerrarPagoProveedor = () => {
+  openPagoProveedorModal.value = false;
   proveedorCuentaCorriente.value = null;
   pagoCuentaCorriente.value = { idFormaPago: 0, importe: 0 };
 };
 
-const nombreFormaPago = (idFormaPago: number) => {
-  const forma = formasDePagoStore.formasDePago.find((item) => item.id === idFormaPago);
-  return forma?.nombre || `Forma #${idFormaPago}`;
+const verDetalleCompraCuentaCorriente = async (idCompra: number) => {
+  const compra = await comprasStore.fetchCompraPorId(idCompra);
+  if (!compra) return;
+  compraDetalleCuentaCorriente.value = compra;
+  openDetalleCompraModal.value = true;
+};
+
+const cerrarDetalleCompraCuentaCorriente = () => {
+  openDetalleCompraModal.value = false;
+  compraDetalleCuentaCorriente.value = null;
 };
 
 const usarSaldoPendienteProveedor = () => {
@@ -791,10 +1100,16 @@ const guardarPagoCuentaCorriente = async () => {
   if (!proveedorCuentaCorriente.value) return;
 
   const { idFormaPago, importe } = pagoCuentaCorriente.value;
+  if (saldoProveedorSeleccionado.value <= 0) {
+    return notification.show("El proveedor no tiene saldo pendiente para pagar", "error");
+  }
   if (idFormaPago <= 0) return notification.show("Debe seleccionar una forma de pago", "error");
   if (importe <= 0) return notification.show("El importe debe ser mayor a 0", "error");
+  if (importe > saldoProveedorSeleccionado.value) {
+    return notification.show("El importe no puede superar el saldo pendiente", "error");
+  }
 
-  const ok = await comprasStore.registrarPagoProveedor({
+  const ok = await store.registrarPagoProveedor({
     idProveedor: proveedorCuentaCorriente.value.id,
     importe,
     idFormaPago
