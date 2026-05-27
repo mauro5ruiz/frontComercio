@@ -41,3 +41,9 @@ export interface CrearCompraDTO {
   detalles: DetalleCompra[];
   pagos?: CompraPago[];
 }
+
+export interface PagarCompraDTO {
+  idCompra: number;
+  importe: number;
+  idFormaPago: number;
+}

@@ -776,7 +776,7 @@ const usarSaldoPendienteCompra = () => {
   pagoCompraForm.value.importe = compraPagoSeleccionada.value.saldoPendiente;
 };
 
-const guardarPagoCompra = () => {
+const guardarPagoCompra = async () => {
   if (!compraPagoSeleccionada.value) return;
 
   const { idFormaPago, importe } = pagoCompraForm.value;
@@ -789,7 +789,22 @@ const guardarPagoCompra = () => {
     return notification.show("El importe no puede superar el saldo pendiente", "error");
   }
 
-  notification.show("La interfaz de pago esta lista. Falta conectar el guardado.", "success");
+  const ok = await comprasStore.registrarPagoCompra({
+    idCompra: compraPagoSeleccionada.value.id,
+    importe,
+    idFormaPago
+  });
+
+  if (!ok) return;
+
+  const idCompra = compraPagoSeleccionada.value.id;
+  await buscarCompras();
+  compraPagoSeleccionada.value = await comprasStore.fetchCompraPorId(idCompra);
+  pagoCompraForm.value = { idFormaPago: 0, importe: 0 };
+
+  if (!compraPagoSeleccionada.value || compraPagoSeleccionada.value.saldoPendiente <= 0) {
+    cerrarPagoCompra();
+  }
 };
 
 const nombreProveedor = (idProveedor: number) => {
