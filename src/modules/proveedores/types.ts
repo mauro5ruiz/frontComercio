@@ -69,11 +69,13 @@ export interface ProveedorMovimiento {
   tipo: string;
   idCompra?: number | null;
   idPago?: number | null;
+  idDevolucionCompra?: number | null;
   fecha: string;
   comprobante: string;
   formaPago?: string | null;
   referencia?: string | null;
   importe: number;
+  saldoCredito?: number | null;
   totalCompra?: number | null;
   pagadoCompra?: number | null;
   saldoPendienteCompra?: number | null;
@@ -83,6 +85,8 @@ export interface ProveedorCuentaCorriente {
   idProveedor: number;
   proveedor: string;
   saldoTotalPendiente: number;
+  creditoDisponible: number;
+  saldoNeto: number;
   totalComprado: number;
   totalPagado: number;
   comprasPendientes: ProveedorCompraPendiente[];

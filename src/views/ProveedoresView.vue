@@ -438,7 +438,7 @@
           </div>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-3 mb-4">
           <div class="rounded-lg border bg-slate-50 px-4 py-3">
             <div class="text-xs uppercase tracking-wide text-slate-500">Total comprado</div>
             <div class="mt-1 text-2xl font-semibold text-slate-900">{{ money(cuentaCorriente?.totalComprado ?? 0) }}</div>
@@ -450,6 +450,16 @@
           <div class="rounded-lg border bg-slate-50 px-4 py-3">
             <div class="text-xs uppercase tracking-wide text-slate-500">Saldo pendiente</div>
             <div class="mt-1 text-2xl font-semibold text-slate-900">{{ money(cuentaCorriente?.saldoTotalPendiente ?? 0) }}</div>
+          </div>
+          <div class="rounded-lg border bg-emerald-50 px-4 py-3">
+            <div class="text-xs uppercase tracking-wide text-emerald-700">Credito disponible</div>
+            <div class="mt-1 text-2xl font-semibold text-emerald-800">{{ money(cuentaCorriente?.creditoDisponible ?? 0) }}</div>
+          </div>
+          <div class="rounded-lg border bg-amber-50 px-4 py-3">
+            <div class="text-xs uppercase tracking-wide" :class="claseTituloEstadoCuenta">{{ tituloEstadoCuenta }}</div>
+            <div class="mt-1 text-2xl font-semibold" :class="claseImporteEstadoCuenta">
+              {{ money(importeEstadoCuenta) }}
+            </div>
           </div>
         </div>
 
@@ -517,6 +527,50 @@
             No hay compras para este proveedor en el rango seleccionado.
           </div>
         </div>
+
+        <div class="rounded-lg border overflow-hidden">
+          <div class="border-b bg-gray-50 px-4 py-3">
+            <h3 class="font-semibold text-gray-800">Movimientos</h3>
+            <p class="text-xs text-gray-500">Incluye compras, pagos y creditos a favor generados por devoluciones o anulaciones.</p>
+          </div>
+          <div v-if="movimientosCuentaCorriente.length" class="overflow-x-auto">
+            <table class="w-full min-w-[920px]">
+              <thead class="bg-white text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
+                <tr>
+                  <th class="px-4 py-3">Fecha</th>
+                  <th class="px-4 py-3">Tipo</th>
+                  <th class="px-4 py-3">Comprobante</th>
+                  <th class="px-4 py-3">Forma de pago</th>
+                  <th class="px-4 py-3">Referencia</th>
+                  <th class="px-4 py-3 text-right">Importe</th>
+                  <th class="px-4 py-3 text-right">Saldo credito</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y">
+                <tr v-for="(movimiento, index) in movimientosCuentaCorriente" :key="`${movimiento.tipo}-${movimiento.idCompra ?? 'na'}-${movimiento.idPago ?? movimiento.idDevolucionCompra ?? index}`" class="hover:bg-gray-50">
+                  <td class="px-4 py-3 text-sm text-gray-700">{{ formatDate(movimiento.fecha) }}</td>
+                  <td class="px-4 py-3 text-sm">
+                    <span class="inline-flex rounded-full px-2.5 py-1 text-xs font-semibold" :class="badgeMovimiento(movimiento.tipo)">
+                      {{ movimiento.tipo }}
+                    </span>
+                  </td>
+                  <td class="px-4 py-3 text-sm text-gray-800">{{ movimiento.comprobante || "-" }}</td>
+                  <td class="px-4 py-3 text-sm text-gray-700">{{ movimiento.formaPago || "-" }}</td>
+                  <td class="px-4 py-3 text-sm text-gray-700">{{ movimiento.referencia || "-" }}</td>
+                  <td class="px-4 py-3 text-sm text-right" :class="colorImporteMovimiento(movimiento.tipo)">
+                    {{ money(movimiento.importe) }}
+                  </td>
+                  <td class="px-4 py-3 text-sm text-right text-emerald-700">
+                    {{ movimiento.saldoCredito != null ? money(movimiento.saldoCredito) : "-" }}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div v-else class="px-4 py-6 text-sm text-gray-400">
+            No hay movimientos para este proveedor en el rango seleccionado.
+          </div>
+        </div>
       </div>
     </div>
 
@@ -558,7 +612,7 @@
           </div>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3 mb-4">
           <div class="rounded-lg border bg-slate-50 px-4 py-3">
             <div class="text-xs uppercase tracking-wide text-slate-500">Saldo pendiente</div>
             <div class="mt-1 text-2xl font-semibold text-slate-900">{{ money(saldoProveedorSeleccionado) }}</div>
@@ -567,10 +621,20 @@
             <div class="text-xs uppercase tracking-wide text-slate-500">Total pagado</div>
             <div class="mt-1 text-2xl font-semibold text-slate-900">{{ money(cuentaCorriente?.totalPagado ?? 0) }}</div>
           </div>
-          <div class="rounded-lg border bg-slate-50 px-4 py-3">
-            <div class="text-xs uppercase tracking-wide text-slate-500">Compras con saldo</div>
-            <div class="mt-1 text-2xl font-semibold text-slate-900">{{ comprasPendientesProveedor.length }}</div>
+          <div class="rounded-lg border bg-emerald-50 px-4 py-3">
+            <div class="text-xs uppercase tracking-wide text-emerald-700">Credito disponible</div>
+            <div class="mt-1 text-2xl font-semibold text-emerald-800">{{ money(cuentaCorriente?.creditoDisponible ?? 0) }}</div>
           </div>
+          <div class="rounded-lg border bg-amber-50 px-4 py-3">
+            <div class="text-xs uppercase tracking-wide" :class="claseTituloEstadoCuenta">{{ tituloEstadoCuenta }}</div>
+            <div class="mt-1 text-2xl font-semibold" :class="claseImporteEstadoCuenta">
+              {{ money(importeEstadoCuenta) }}
+            </div>
+          </div>
+        </div>
+
+        <div class="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900" v-if="(cuentaCorriente?.creditoDisponible ?? 0) > 0">
+          El proveedor tiene saldo a favor. Ese credito se descuenta del saldo pendiente y reduce el importe maximo a pagar.
         </div>
 
         <div class="rounded-lg border mb-4 overflow-hidden">
@@ -619,7 +683,7 @@
               <div class="flex items-center justify-between gap-3">
                 <label class="text-sm text-gray-700">Importe *</label>
                 <button
-                  v-if="saldoProveedorSeleccionado > 0"
+                  v-if="saldoNetoProveedor > 0"
                   type="button"
                   class="text-sm text-emerald-700 hover:text-emerald-800"
                   @click="usarSaldoPendienteProveedor"
@@ -630,9 +694,9 @@
               <input v-model.number="pagoCuentaCorriente.importe" type="number" min="0.01" step="0.01" class="w-full border px-3 py-2 rounded-md" />
             </div>
             <div class="flex items-end">
-              <button
+                <button
                 @click="guardarPagoCuentaCorriente"
-                :disabled="saldoProveedorSeleccionado <= 0"
+                :disabled="saldoNetoProveedor <= 0"
                 class="w-full bg-emerald-600 text-white px-4 py-2 rounded hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-emerald-300"
               >
                 Registrar pago
@@ -827,6 +891,24 @@ const productos = computed(() => productosStore.productos);
 const cuentaCorriente = computed(() => store.cuentaCorriente);
 const comprasPendientesProveedor = computed(() => cuentaCorriente.value?.comprasPendientes ?? []);
 const saldoProveedorSeleccionado = computed(() => cuentaCorriente.value?.saldoTotalPendiente ?? 0);
+const saldoNetoProveedor = computed(() => cuentaCorriente.value?.saldoNeto ?? saldoProveedorSeleccionado.value);
+const importeEstadoCuenta = computed(() => Math.abs(saldoNetoProveedor.value));
+const tituloEstadoCuenta = computed(() => {
+  if (saldoNetoProveedor.value > 0) return "Saldo neto a pagar";
+  if (saldoNetoProveedor.value < 0) return "Saldo a favor";
+  return "Sin deuda";
+});
+const claseTituloEstadoCuenta = computed(() => {
+  if (saldoNetoProveedor.value > 0) return "text-amber-700";
+  if (saldoNetoProveedor.value < 0) return "text-emerald-700";
+  return "text-slate-500";
+});
+const claseImporteEstadoCuenta = computed(() => {
+  if (saldoNetoProveedor.value > 0) return "text-amber-800";
+  if (saldoNetoProveedor.value < 0) return "text-emerald-800";
+  return "text-slate-900";
+});
+const movimientosCuentaCorriente = computed(() => cuentaCorriente.value?.movimientos ?? []);
 const comprasCuentaCorriente = computed(() =>
   (cuentaCorriente.value?.movimientos ?? [])
     .filter((movimiento) => movimiento.tipo.toLowerCase() === "compra")
@@ -886,6 +968,20 @@ function nombreProducto(idProducto: number) {
 
 function nombreFormaPago(idFormaPago: number) {
   return formasDePago.value.find((forma) => forma.id === idFormaPago)?.nombre || `Forma #${idFormaPago}`;
+}
+
+function badgeMovimiento(tipo: string) {
+  const normalizado = tipo.toLowerCase();
+  if (normalizado === "credito") return "bg-emerald-100 text-emerald-800";
+  if (normalizado === "pago") return "bg-blue-100 text-blue-800";
+  return "bg-slate-100 text-slate-800";
+}
+
+function colorImporteMovimiento(tipo: string) {
+  const normalizado = tipo.toLowerCase();
+  if (normalizado === "credito") return "text-emerald-700";
+  if (normalizado === "pago") return "text-blue-700";
+  return "text-gray-700";
 }
 
 const onFileChange = (event: Event) => {
@@ -1093,20 +1189,20 @@ const cerrarDetalleCompraCuentaCorriente = () => {
 };
 
 const usarSaldoPendienteProveedor = () => {
-  pagoCuentaCorriente.value.importe = saldoProveedorSeleccionado.value;
+  pagoCuentaCorriente.value.importe = Math.max(saldoNetoProveedor.value, 0);
 };
 
 const guardarPagoCuentaCorriente = async () => {
   if (!proveedorCuentaCorriente.value) return;
 
   const { idFormaPago, importe } = pagoCuentaCorriente.value;
-  if (saldoProveedorSeleccionado.value <= 0) {
-    return notification.show("El proveedor no tiene saldo pendiente para pagar", "error");
+  if (saldoNetoProveedor.value <= 0) {
+    return notification.show("El proveedor no tiene saldo neto pendiente para pagar", "error");
   }
   if (idFormaPago <= 0) return notification.show("Debe seleccionar una forma de pago", "error");
   if (importe <= 0) return notification.show("El importe debe ser mayor a 0", "error");
-  if (importe > saldoProveedorSeleccionado.value) {
-    return notification.show("El importe no puede superar el saldo pendiente", "error");
+  if (importe > saldoNetoProveedor.value) {
+    return notification.show("El importe no puede superar el saldo neto pendiente", "error");
   }
 
   const ok = await store.registrarPagoProveedor({
