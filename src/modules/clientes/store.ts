@@ -3,7 +3,9 @@ import { ref } from "vue";
 import type {
   Cliente,
   CrearClienteDTO,
-  ActualizarClienteDTO
+  ActualizarClienteDTO,
+  ClienteCuentaCorriente,
+  CobrarCuentaCorrienteClienteDTO
 } from "./types";
 import {
   obtenerClientes,
@@ -12,12 +14,22 @@ import {
   actualizarCliente,
   eliminarCliente,
   darDeBajaCliente,
-  restaurarCliente
+  restaurarCliente,
+  obtenerCuentaCorrienteCliente,
+  cobrarCuentaCorrienteCliente
 } from "./services";
 import { useNotificationStore } from "@/stores/notificaciones";
 
+const getApiMessage = (err: any, fallback: string) =>
+  err.response?.data?.error ||
+  err.response?.data?.Error ||
+  err.response?.data?.mensaje ||
+  err.response?.data?.Mensaje ||
+  fallback;
+
 export const useClientesStore = defineStore("clientes", () => {
   const clientes = ref<Cliente[]>([]);
+  const cuentaCorriente = ref<ClienteCuentaCorriente | null>(null);
   const loading = ref(false);
   const error = ref<string | null>(null);
   const notification = useNotificationStore();
@@ -27,6 +39,31 @@ export const useClientesStore = defineStore("clientes", () => {
     loading.value = true;
     try {
       clientes.value = await obtenerClientes(incluirEliminados);
+    } finally {
+      loading.value = false;
+    }
+  };
+
+  const fetchCuentaCorriente = async (
+    idCliente: number,
+    desde?: string,
+    hasta?: string,
+    soloPendientes?: boolean
+  ) => {
+    loading.value = true;
+    try {
+      error.value = null;
+      cuentaCorriente.value = await obtenerCuentaCorrienteCliente(idCliente, {
+        desde,
+        hasta,
+        soloPendientes,
+      });
+      return cuentaCorriente.value;
+    } catch (err: any) {
+      const message = getApiMessage(err, "No se pudo obtener la cuenta corriente del cliente");
+      error.value = message;
+      notification.show(message, "error");
+      return null;
     } finally {
       loading.value = false;
     }
@@ -146,15 +183,32 @@ export const useClientesStore = defineStore("clientes", () => {
     }
   };
 
+  const registrarCobroCliente = async (dto: CobrarCuentaCorrienteClienteDTO) => {
+    try {
+      error.value = null;
+      const resp = await cobrarCuentaCorrienteCliente(dto);
+      notification.show(resp.mensaje || "Cobro registrado correctamente", "success");
+      return true;
+    } catch (err: any) {
+      const message = getApiMessage(err, "Error al registrar el cobro");
+      error.value = message;
+      notification.show(message, "error");
+      return false;
+    }
+  };
+
   return {
     clientes,
+    cuentaCorriente,
     loading,
     error,
     fetchClientes,
+    fetchCuentaCorriente,
     addCliente,
     editCliente,
     removeCliente,
     darDeBaja,
-    restaurar
+    restaurar,
+    registrarCobroCliente
   };
 });

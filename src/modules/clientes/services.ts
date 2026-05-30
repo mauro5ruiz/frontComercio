@@ -2,7 +2,10 @@ import api from "@/plugins/axios";
 import type {
   Cliente,
   CrearClienteDTO,
-  ActualizarClienteDTO
+  ActualizarClienteDTO,
+  ClienteCuentaCorriente,
+  CobrarCuentaCorrienteClienteDTO,
+  ObtenerCuentaCorrienteClienteQuery
 } from "./types";
 
 const appendIfPresent = (formData: FormData,key: string,value: string | undefined | null) => {
@@ -63,6 +66,23 @@ export const obtenerClientes = async (incluirEliminados = false): Promise<Client
 // GET por id
 export const obtenerClientePorId = async (id: number): Promise<Cliente> => {
   const { data } = await api.get(`/clientes/${id}`);
+  return data;
+};
+
+export const obtenerCuentaCorrienteCliente = async (
+  id: number,
+  query: ObtenerCuentaCorrienteClienteQuery,
+): Promise<ClienteCuentaCorriente> => {
+  const { data } = await api.get(`/clientes/${id}/cuenta-corriente`, {
+    params: query,
+  });
+  return data;
+};
+
+export const cobrarCuentaCorrienteCliente = async (
+  dto: CobrarCuentaCorrienteClienteDTO,
+): Promise<{ mensaje: string }> => {
+  const { data } = await api.post("/clientes/cobrar-cliente", dto);
   return data;
 };
 
