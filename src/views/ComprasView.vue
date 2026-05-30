@@ -464,10 +464,16 @@
                   class="text-sm text-emerald-700 hover:text-emerald-800"
                   @click="usarSaldoPendienteCompra"
                 >
-                  Usar saldo
+                  Pago total
                 </button>
               </div>
-              <input v-model.number="pagoCompraForm.importe" type="number" min="0.01" step="0.01" class="w-full border px-3 py-2 rounded-md" />
+              <input
+                :value="pagoCompraImporteInput"
+                type="text"
+                inputmode="numeric"
+                class="w-full border px-3 py-2 rounded-md"
+                @input="actualizarPagoCompraImporte"
+              />
             </div>
             <div class="flex items-end">
               <button
@@ -557,6 +563,7 @@ const pagoCompraForm = ref({
   idFormaPago: 0,
   importe: 0
 });
+const pagoCompraImporteInput = ref("");
 
 const proveedores = computed(() => proveedoresStore.proveedores.filter(p => p.activo));
 const productos = computed(() => productosStore.productos.filter(p => p.activo));
@@ -619,6 +626,7 @@ const cerrarModal = () => {
 const abrirPagoCompra = (compra: Compra) => {
   compraPagoSeleccionada.value = compra;
   pagoCompraForm.value = { idFormaPago: 0, importe: 0 };
+  pagoCompraImporteInput.value = "";
   openPagoModal.value = true;
 };
 
@@ -626,6 +634,7 @@ const cerrarPagoCompra = () => {
   openPagoModal.value = false;
   compraPagoSeleccionada.value = null;
   pagoCompraForm.value = { idFormaPago: 0, importe: 0 };
+  pagoCompraImporteInput.value = "";
 };
 
 const seleccionarProveedor = (proveedor: Proveedor) => {
@@ -694,6 +703,15 @@ const bloquearDecimal = (event: KeyboardEvent) => {
   if (event.key === "." || event.key === ",") {
     event.preventDefault();
   }
+};
+
+const actualizarPagoCompraImporte = (event: Event) => {
+  const target = event.target as HTMLInputElement;
+  const soloDigitos = target.value.replace(/\D/g, "");
+  const valor = soloDigitos ? Number(soloDigitos) : 0;
+
+  pagoCompraForm.value.importe = valor;
+  pagoCompraImporteInput.value = soloDigitos ? formatoMiles(valor) : "";
 };
 
 const guardarCompra = async () => {
@@ -774,6 +792,7 @@ const anular = async (id: number) => {
 const usarSaldoPendienteCompra = () => {
   if (!compraPagoSeleccionada.value) return;
   pagoCompraForm.value.importe = compraPagoSeleccionada.value.saldoPendiente;
+  pagoCompraImporteInput.value = formatoMiles(pagoCompraForm.value.importe);
 };
 
 const guardarPagoCompra = async () => {
@@ -801,6 +820,7 @@ const guardarPagoCompra = async () => {
   await buscarCompras();
   compraPagoSeleccionada.value = await comprasStore.fetchCompraPorId(idCompra);
   pagoCompraForm.value = { idFormaPago: 0, importe: 0 };
+  pagoCompraImporteInput.value = "";
 
   if (!compraPagoSeleccionada.value || compraPagoSeleccionada.value.saldoPendiente <= 0) {
     cerrarPagoCompra();

@@ -28,7 +28,7 @@ export interface Venta {
   total: number;
   totalPagado: number;
   saldoPendiente: number;
-  estado: string;
+  estado: string | number;
   observaciones?: string;
   fechaAnulacion?: string | null;
   detalles?: DetalleVenta[];

@@ -2,11 +2,26 @@ import { defineStore } from "pinia";
 import { ref } from "vue";
 import { useNotificationStore } from "@/stores/notificaciones";
 import type { CobrarClienteDTO, CrearVentaDTO, Venta } from "./types";
-import { anularVenta, cobrarCliente, crearVenta, obtenerVentaPorId, obtenerVentasEntreFechas } from "./services";
+import {
+  anularVenta,
+  cobrarCliente,
+  crearVenta,
+  obtenerPendientesPorCliente,
+  obtenerVentaPorId,
+  obtenerVentasEntreFechas,
+} from "./services";
+
+const getApiMessage = (err: any, fallback: string) =>
+  err.response?.data?.error ||
+  err.response?.data?.Error ||
+  err.response?.data?.mensaje ||
+  err.response?.data?.Mensaje ||
+  fallback;
 
 export const useVentasStore = defineStore("ventas", () => {
   const ventas = ref<Venta[]>([]);
   const ventaSeleccionada = ref<Venta | null>(null);
+  const ventasPendientesCliente = ref<Venta[]>([]);
   const loading = ref(false);
   const error = ref<string | null>(null);
   const notification = useNotificationStore();
@@ -17,7 +32,7 @@ export const useVentasStore = defineStore("ventas", () => {
       error.value = null;
       ventas.value = await obtenerVentasEntreFechas(desde, hasta);
     } catch (err: any) {
-      const message = err.response?.data?.error || err.response?.data?.Error || "No se pudieron obtener las ventas";
+      const message = getApiMessage(err, "No se pudieron obtener las ventas");
       error.value = message;
       notification.show(message, "error");
     } finally {
@@ -31,7 +46,7 @@ export const useVentasStore = defineStore("ventas", () => {
       ventaSeleccionada.value = await obtenerVentaPorId(id);
       return ventaSeleccionada.value;
     } catch (err: any) {
-      const message = err.response?.data?.error || err.response?.data?.Error || "No se pudo obtener la venta";
+      const message = getApiMessage(err, "No se pudo obtener la venta");
       error.value = message;
       notification.show(message, "error");
       return null;
@@ -45,7 +60,7 @@ export const useVentasStore = defineStore("ventas", () => {
       notification.show(resp.mensaje || "Venta creada correctamente", "success");
       return resp.idVenta;
     } catch (err: any) {
-      const message = err.response?.data?.error || err.response?.data?.Error || "Error al crear la venta";
+      const message = getApiMessage(err, "Error al crear la venta");
       error.value = message;
       notification.show(message, "error");
       return null;
@@ -59,10 +74,24 @@ export const useVentasStore = defineStore("ventas", () => {
       notification.show(resp.mensaje || "Venta anulada correctamente", "success");
       return true;
     } catch (err: any) {
-      const message = err.response?.data?.error || err.response?.data?.Error || "Error al anular la venta";
+      const message = getApiMessage(err, "Error al anular la venta");
       error.value = message;
       notification.show(message, "error");
       return false;
+    }
+  };
+
+  const fetchPendientesPorCliente = async (idCliente: number) => {
+    try {
+      error.value = null;
+      ventasPendientesCliente.value = await obtenerPendientesPorCliente(idCliente);
+      return ventasPendientesCliente.value;
+    } catch (err: any) {
+      const message = getApiMessage(err, "No se pudieron obtener las ventas pendientes del cliente");
+      error.value = message;
+      notification.show(message, "error");
+      ventasPendientesCliente.value = [];
+      return [];
     }
   };
 
@@ -73,7 +102,7 @@ export const useVentasStore = defineStore("ventas", () => {
       notification.show(resp.mensaje || "Cobro registrado correctamente", "success");
       return true;
     } catch (err: any) {
-      const message = err.response?.data?.error || err.response?.data?.Error || "Error al registrar el cobro";
+      const message = getApiMessage(err, "Error al registrar el cobro");
       error.value = message;
       notification.show(message, "error");
       return false;
@@ -83,10 +112,12 @@ export const useVentasStore = defineStore("ventas", () => {
   return {
     ventas,
     ventaSeleccionada,
+    ventasPendientesCliente,
     loading,
     error,
     fetchVentas,
     fetchVentaPorId,
+    fetchPendientesPorCliente,
     addVenta,
     cancelarVenta,
     registrarCobro,

@@ -1,8 +1,8 @@
-﻿<template>
+<template>
   <div class="p-6">
     <h1 class="text-2xl font-bold mb-4">Ventas</h1>
 
-    <div class="bg-white rounded-xl shadow p-4 mb-4 grid grid-cols-1 md:grid-cols-3 gap-3">
+    <div class="bg-white rounded-xl shadow p-4 mb-4 grid grid-cols-1 md:grid-cols-2 gap-3">
       <div>
         <label class="text-sm text-gray-600">Desde</label>
         <input v-model="desde" type="date" :max="hasta || undefined" class="w-full border px-3 py-2 rounded-md" @blur="buscarVentas" />
@@ -10,9 +10,6 @@
       <div>
         <label class="text-sm text-gray-600">Hasta</label>
         <input v-model="hasta" type="date" :min="desde || undefined" class="w-full border px-3 py-2 rounded-md" @blur="buscarVentas" />
-      </div>
-      <div class="flex items-end">
-        <button @click="abrirModalCobroCliente" class="w-full bg-emerald-600 text-white px-4 py-2 rounded hover:bg-emerald-700">Cobrar cliente</button>
       </div>
     </div>
 
@@ -34,46 +31,96 @@
         </tr>
       </thead>
       <tbody>
-        <tr v-for="v in ventasPaginadas" :key="v.id" class="border-b hover:bg-gray-50">
+        <tr v-if="ventasStore.loading">
+          <td colspan="8" class="text-center py-4 text-gray-400">Cargando ventas...</td>
+        </tr>
+        <tr v-else v-for="v in ventasPaginadas" :key="v.id" class="border-b hover:bg-gray-50">
           <td class="p-2">{{ formatDate(v.fecha) }}</td>
           <td class="p-2">{{ v.numeroComprobante }}</td>
           <td class="p-2">{{ nombreCliente(v.idCliente) }}</td>
           <td class="p-2 text-right">{{ money(v.total) }}</td>
           <td class="p-2 text-right">{{ money(v.totalPagado) }}</td>
           <td class="p-2 text-right">{{ money(v.saldoPendiente) }}</td>
-          <td class="p-2"><span :class="v.estado === 2 ? 'text-red-600' : 'text-green-600'">{{ v.estado === 2 ? 'Anulada' : 'Activa' }}</span></td>
-          <td class="p-2 text-right">
-            <button @click="verDetalle(v.id)" class="text-blue-500 mr-2">Ver</button>
-            <button v-if="v.estado !== 2" @click="anular(v.id)" class="text-red-500">Anular</button>
+          <td class="p-2">
+            <span :class="estaAnulada(v.estado) ? 'text-red-600' : 'text-green-600'">
+              {{ estaAnulada(v.estado) ? "Anulada" : "Activa" }}
+            </span>
           </td>
+          <td class="p-2">
+            <div class="flex items-center justify-end gap-2">
+              <button
+                v-if="!estaAnulada(v.estado) && Number(v.saldoPendiente) > 0"
+                @click="abrirCobroVenta(v)"
+                class="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-md text-emerald-600 transition hover:bg-emerald-50"
+                title="Cobrar venta"
+                type="button"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="h-5 w-5" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v18" />
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 7.5c0-1.9-2-3.5-4.5-3.5S7.5 5.6 7.5 7.5 9.5 11 12 11s4.5 1.6 4.5 3.5S14.5 18 12 18s-4.5-1.6-4.5-3.5" />
+                </svg>
+              </button>
+              <button
+                @click="verDetalle(v.id)"
+                class="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-md text-blue-500 transition hover:bg-blue-50"
+                title="Ver detalle"
+                type="button"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="h-5 w-5" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12Z" />
+                  <circle cx="12" cy="12" r="3" />
+                </svg>
+              </button>
+              <button
+                v-if="!estaAnulada(v.estado)"
+                @click="abrirConfirmacionAnulacion(v.id)"
+                class="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-md text-red-500 transition hover:bg-red-50"
+                title="Anular venta"
+                type="button"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="h-5 w-5" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M3 6h18" />
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M8 6V4h8v2" />
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M19 6l-1 14H6L5 6" />
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M10 11v6M14 11v6" />
+                </svg>
+              </button>
+            </div>
+          </td>
+        </tr>
+        <tr v-if="!ventasStore.loading && ventasFiltradas.length === 0">
+          <td colspan="8" class="text-center py-4 text-gray-400">No hay ventas</td>
         </tr>
       </tbody>
     </table>
 
     <div class="flex justify-center items-center gap-2 mt-4">
-      <button @click="page--" :disabled="page === 1" class="px-3 py-1 bg-gray-200 rounded disabled:opacity-50">←</button>
-      <span class="text-sm">Página {{ page }} de {{ totalPaginas }}</span>
-      <button @click="page++" :disabled="page === totalPaginas" class="px-3 py-1 bg-gray-200 rounded disabled:opacity-50">→</button>
+      <button @click="page--" :disabled="page === 1" class="px-3 py-1 bg-gray-200 rounded disabled:opacity-50">&larr;</button>
+      <span class="text-sm">Pagina {{ page }} de {{ totalPaginas }}</span>
+      <button @click="page++" :disabled="page === totalPaginas" class="px-3 py-1 bg-gray-200 rounded disabled:opacity-50">&rarr;</button>
     </div>
 
-    <div v-if="openModal" class="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50">
-      <div class="bg-white rounded-xl w-full max-w-6xl shadow-xl max-h-[95vh] h-[95vh] flex flex-col">
-        <div class="px-6 py-4 border-b bg-gray-50 rounded-t-xl"><h2 class="text-lg font-bold text-gray-800">Nueva venta</h2></div>
-        <div class="p-6 overflow-y-auto space-y-5 flex-1">
+    <div v-if="openModal" @click.self="cerrarModal" class="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50">
+      <div class="bg-white rounded-xl w-full max-w-6xl shadow-xl max-h-[90vh] flex flex-col">
+        <div class="px-6 py-4 border-b bg-gray-50 rounded-t-xl">
+          <h2 class="text-lg font-bold text-gray-800">Nueva venta</h2>
+        </div>
+
+        <div class="p-6 overflow-y-auto space-y-5">
           <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
             <div>
               <label class="text-sm text-gray-700">Nro. comprobante *</label>
               <input v-model="form.numeroComprobante" class="w-full border px-3 py-2 rounded-md" />
             </div>
             <div ref="clienteBox" class="relative">
-              <label class="text-sm text-gray-700">Cliente * (buscar)</label>
+              <label class="text-sm text-gray-700">Cliente *</label>
               <div class="relative">
-                <input v-model="clienteSearch" class="w-full border px-3 py-2 rounded-md pr-8" placeholder="Escribí nombre o documento" @focus="clienteOpen = true" />
-                <button v-if="form.idCliente > 0 || clienteSearch" type="button" class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700 text-sm" @click="limpiarCliente">×</button>
+                <input v-model="clienteSearch" class="w-full border px-3 py-2 rounded-md pr-8" placeholder="Buscar cliente" @focus="clienteOpen = true" />
+                <button v-if="form.idCliente > 0 || clienteSearch" type="button" class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700 text-sm" @click="limpiarCliente">x</button>
               </div>
               <div v-if="clienteOpen && clientesFiltrados.length" class="absolute z-20 w-full mt-1 bg-white border rounded-md shadow max-h-44 overflow-y-auto">
                 <button v-for="c in clientesFiltrados" :key="c.id" type="button" class="w-full text-left px-3 py-2 hover:bg-gray-50 text-sm" @click="seleccionarCliente(c)">
-                  {{ c.nombreCompleto }} - Doc {{ c.documento }}
+                  {{ c.nombreCompleto }} - Doc {{ c.nroDocumento || "-" }}
                 </button>
               </div>
             </div>
@@ -81,11 +128,11 @@
               <label class="text-sm text-gray-700">Vendedor *</label>
               <div class="relative">
                 <input v-model="vendedorSearch" class="w-full border px-3 py-2 rounded-md pr-8" placeholder="Buscar vendedor" @focus="vendedorOpen = true" />
-                <button v-if="form.idVendedor > 0 || vendedorSearch" type="button" class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700 text-sm" @click="limpiarVendedor">×</button>
+                <button v-if="form.idVendedor > 0 || vendedorSearch" type="button" class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700 text-sm" @click="limpiarVendedor">x</button>
               </div>
               <div v-if="vendedorOpen && vendedoresFiltrados.length" class="absolute z-20 w-full mt-1 bg-white border rounded-md shadow max-h-44 overflow-y-auto">
                 <button v-for="v in vendedoresFiltrados" :key="v.id" type="button" class="w-full text-left px-3 py-2 hover:bg-gray-50 text-sm" @click="seleccionarVendedor(v)">
-                  {{ v.nombre }}
+                  {{ `${v.nombre} ${v.apellido}`.trim() }}
                 </button>
               </div>
             </div>
@@ -97,38 +144,138 @@
           </div>
 
           <div class="border rounded-lg p-4 bg-gray-50/50">
-            <h3 class="font-semibold text-gray-800 mb-2">Detalle de productos</h3>
-            <div class="grid grid-cols-1 md:grid-cols-5 gap-2 mb-3">
-              <div ref="productoBox" class="relative md:col-span-2">
-                <div class="relative">
-                  <input v-model="productoSearch" class="border px-3 py-2 rounded-md w-full pr-8" placeholder="Buscar producto o marca" @focus="abrirBuscadorProducto" />
-                  <button v-if="nuevoDetalle.idProducto > 0 || productoSearch" type="button" class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700 text-sm" @click="limpiarProducto">×</button>
+            <div class="flex justify-between items-center mb-3">
+              <div>
+                <h3 class="font-semibold text-gray-800">Detalle de productos</h3>
+                <p class="text-xs text-gray-500">Primero elegi un producto, despues completa cantidad y precio unitario.</p>
+              </div>
+            </div>
+
+            <div class="rounded-lg border border-dashed border-gray-300 bg-white p-4 mb-3">
+              <div class="grid grid-cols-1 md:grid-cols-5 gap-3 md:items-start">
+                <div ref="productoBox" class="relative md:col-span-2">
+                  <label class="block text-sm font-medium text-gray-700 mb-1">1. Producto</label>
+                  <div class="relative">
+                    <input
+                      v-model="productoSearch"
+                      class="border px-3 py-2 rounded-md w-full pr-8"
+                      placeholder="Escribe para buscar un producto"
+                      @focus="productoOpen = true"
+                    />
+                    <button v-if="nuevoDetalle.idProducto > 0 || productoSearch" type="button" class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700 text-sm" @click="limpiarProducto">x</button>
+                  </div>
+                  <p class="text-xs text-gray-500 mt-1">Busca por nombre y seleccionalo de la lista.</p>
+                  <div v-if="productoSeleccionado" class="mt-2 rounded-md bg-blue-50 text-blue-800 px-3 py-2 text-sm border border-blue-100">
+                    <div>
+                      Producto seleccionado: <span class="font-semibold">{{ productoSeleccionado.nombre }}</span>
+                    </div>
+                    <div class="mt-1">
+                      Marca: <span class="font-semibold">{{ marcaProducto(productoSeleccionado.id) }}</span>
+                    </div>
+                    <div class="mt-1">
+                      Stock actual: <span class="font-semibold">{{ stockProducto(productoSeleccionado.id) }}</span>
+                    </div>
+                    <div class="mt-1">
+                      Precio venta actual: <span class="font-semibold">{{ precioVentaProducto(productoSeleccionado.id) }}</span>
+                    </div>
+                  </div>
+                  <div v-if="productoOpen && productosFiltrados.length" class="absolute z-20 w-full mt-1 bg-white border rounded-md shadow max-h-52 overflow-y-auto">
+                    <button v-for="prod in productosFiltrados" :key="prod.id" type="button" class="w-full text-left px-3 py-2 hover:bg-gray-50 text-sm" @click="seleccionarProducto(prod)">
+                      <div class="font-medium text-gray-800">{{ prod.nombre }}</div>
+                      <div class="text-xs text-gray-500">Marca: {{ nombreMarcaProducto(prod) }}</div>
+                      <div class="text-xs text-gray-500">Stock actual: {{ prod.stockActual }}</div>
+                      <div class="text-xs text-gray-500">Precio venta: {{ money(prod.precioVenta ?? 0) }}</div>
+                    </button>
+                  </div>
                 </div>
-                <div v-if="productoOpen && productosFiltrados.length" :class="['absolute z-20 w-full bg-white border rounded-md shadow max-h-52 overflow-y-auto', productoDropdownArriba ? 'bottom-full mb-1' : 'top-full mt-1']">
-                  <button v-for="p in productosFiltrados" :key="p.id" type="button" class="w-full text-left px-3 py-2 hover:bg-gray-50 text-sm" @click="seleccionarProducto(p)">
-                    {{ p.nombre }} - {{ p.marcaNombre }}
+
+                <div class="flex flex-col">
+                  <label class="block text-sm font-medium text-gray-700 mb-1">2. Cantidad</label>
+                  <input
+                    v-model.number="nuevoDetalle.cantidad"
+                    type="number"
+                    min="1"
+                    step="1"
+                    placeholder="Ej: 10"
+                    :disabled="nuevoDetalle.idProducto <= 0"
+                    class="border px-3 py-2 rounded-md w-full disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
+                    @keydown="bloquearDecimal"
+                  />
+                </div>
+
+                <div class="flex flex-col">
+                  <label class="block text-sm font-medium text-gray-700 mb-1">3. Precio unitario</label>
+                  <input
+                    :value="nuevoDetallePrecioInput"
+                    type="text"
+                    inputmode="numeric"
+                    placeholder="Ej: 2500"
+                    :disabled="nuevoDetalle.idProducto <= 0"
+                    class="border px-3 py-2 rounded-md w-full disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
+                    @input="actualizarNuevoDetallePrecio"
+                  />
+                </div>
+
+                <div class="flex flex-col md:self-start">
+                  <label class="block text-sm font-medium text-gray-700 mb-1">4. Accion</label>
+                  <button
+                    @click="agregarDetalle"
+                    :disabled="nuevoDetalle.idProducto <= 0"
+                    class="w-full bg-blue-600 text-white rounded-md px-3 py-2 hover:bg-blue-700 disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed"
+                  >
+                    Agregar al detalle
                   </button>
                 </div>
               </div>
-              <input v-model.number="nuevoDetalle.cantidad" type="number" min="1" step="1" placeholder="Cantidad" class="border px-3 py-2 rounded-md w-full" />
-              <input v-model.number="nuevoDetalle.precioUnitario" type="number" min="1" step="1" placeholder="Precio unitario" class="border px-3 py-2 rounded-md w-full" />
-              <button @click="agregarDetalle" class="bg-blue-600 text-white rounded-md px-3 py-2 hover:bg-blue-700">Agregar</button>
             </div>
+
             <div class="overflow-x-auto border rounded-md bg-white">
               <table class="w-full min-w-[640px]">
                 <thead class="bg-gray-50 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide">
                   <tr>
-                    <th class="px-3 py-2">Producto</th><th class="px-3 py-2">Marca</th><th class="px-3 py-2 text-right">Cantidad</th><th class="px-3 py-2 text-right">Precio</th><th class="px-3 py-2 text-right">Subtotal</th><th class="px-3 py-2 text-right">Acción</th>
+                    <th class="px-3 py-2">Producto</th>
+                    <th class="px-3 py-2 text-right">Cantidad</th>
+                    <th class="px-3 py-2 text-right">Precio unitario</th>
+                    <th class="px-3 py-2 text-right">Subtotal</th>
+                    <th class="px-3 py-2 text-right">Accion</th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr v-for="(d, idx) in form.detalles" :key="idx" class="border-t">
-                    <td class="px-3 py-2">{{ nombreProducto(d.idProducto) }}</td>
-                    <td class="px-3 py-2">{{ marcaProducto(d.idProducto) }}</td>
-                    <td class="px-3 py-2 text-right">{{ d.cantidad }}</td>
-                    <td class="px-3 py-2 text-right">{{ money(d.precioUnitario) }}</td>
-                    <td class="px-3 py-2 text-right">{{ money(d.cantidad * d.precioUnitario) }}</td>
-                    <td class="px-3 py-2 text-right"><button @click="quitarDetalle(idx)" class="text-red-600">Quitar</button></td>
+                    <td class="px-3 py-2">
+                      <div>{{ nombreProducto(d.idProducto) }}</div>
+                      <div class="text-xs text-gray-500">Marca: {{ marcaProducto(d.idProducto) }}</div>
+                      <div class="text-xs text-gray-500">Stock actual: {{ stockProducto(d.idProducto) }}</div>
+                    </td>
+                    <td class="px-3 py-2 text-right">
+                      <input
+                        v-model.number="d.cantidad"
+                        type="number"
+                        min="1"
+                        step="1"
+                        class="w-24 border rounded px-2 py-1 text-right"
+                        @keydown="bloquearDecimal"
+                        @blur="normalizarDetalle(idx)"
+                      />
+                    </td>
+                    <td class="px-3 py-2 text-right">
+                      <input
+                        v-model.number="d.precioUnitario"
+                        type="number"
+                        min="1"
+                        step="1"
+                        class="w-32 border rounded px-2 py-1 text-right"
+                        @keydown="bloquearDecimal"
+                        @blur="normalizarDetalle(idx)"
+                      />
+                    </td>
+                    <td class="px-3 py-2 text-right font-medium">{{ money(d.cantidad * d.precioUnitario) }}</td>
+                    <td class="px-3 py-2 text-right">
+                      <button @click="quitarDetalle(idx)" class="text-red-600 hover:text-red-700">Quitar</button>
+                    </td>
+                  </tr>
+                  <tr v-if="!form.detalles.length" class="border-t">
+                    <td colspan="5" class="px-3 py-4 text-center text-sm text-gray-400">Todavia no agregaste productos.</td>
                   </tr>
                 </tbody>
               </table>
@@ -176,6 +323,7 @@
 
           <div class="text-right font-semibold">Total calculado: {{ money(totalCalculado) }}</div>
         </div>
+
         <div class="px-6 py-4 border-t bg-gray-50 rounded-b-xl flex justify-end gap-2">
           <button @click="cerrarModal" class="px-4 py-2 rounded-md bg-gray-200 hover:bg-gray-300">Cancelar</button>
           <button @click="guardarVenta" class="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600">Guardar</button>
@@ -183,54 +331,158 @@
       </div>
     </div>
 
-    <div v-if="openCobroClienteModal" class="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-50">
-      <div class="bg-white rounded-lg shadow-lg w-full max-w-md p-6">
-        <h2 class="text-lg font-bold mb-4">Cobrar cliente</h2>
-        <div class="space-y-3">
-          <div ref="cobroClienteBox" class="relative">
-            <label class="text-sm text-gray-700">Cliente * (buscar)</label>
-            <div class="relative">
-              <input v-model="cobroClienteSearch" class="w-full border px-3 py-2 rounded-md pr-8" @focus="cobroClienteOpen = true" />
-              <button v-if="cobroCliente.idCliente > 0 || cobroClienteSearch" type="button" class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700 text-sm" @click="limpiarClienteCobro">×</button>
+    <div
+      v-if="openCobroVentaModal && ventaCobroSeleccionada"
+      class="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-50"
+    >
+      <div class="bg-white rounded-lg shadow-lg w-full max-w-4xl p-6 max-h-[90vh] overflow-y-auto">
+        <div class="flex items-start justify-between gap-4 mb-4">
+          <div>
+            <h2 class="text-lg font-bold text-gray-800">Cobrar venta</h2>
+            <p class="text-sm text-gray-500">
+              {{ ventaCobroSeleccionada.numeroComprobante }} - {{ nombreCliente(ventaCobroSeleccionada.idCliente) }}
+            </p>
+          </div>
+          <button @click="cerrarCobroVenta" class="px-3 py-2 rounded bg-gray-200 hover:bg-gray-300">Cerrar</button>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+          <div class="rounded-lg border bg-slate-50 px-4 py-3">
+            <div class="text-xs uppercase tracking-wide text-slate-500">Total</div>
+            <div class="mt-1 text-2xl font-semibold text-slate-900">{{ money(ventaCobroSeleccionada.total) }}</div>
+          </div>
+          <div class="rounded-lg border bg-slate-50 px-4 py-3">
+            <div class="text-xs uppercase tracking-wide text-slate-500">Total cobrado</div>
+            <div class="mt-1 text-2xl font-semibold text-slate-900">{{ money(ventaCobroSeleccionada.totalPagado) }}</div>
+          </div>
+          <div class="rounded-lg border bg-slate-50 px-4 py-3">
+            <div class="text-xs uppercase tracking-wide text-slate-500">Saldo pendiente</div>
+            <div class="mt-1 text-2xl font-semibold text-slate-900">{{ money(ventaCobroSeleccionada.saldoPendiente) }}</div>
+          </div>
+        </div>
+
+        <div class="rounded-lg border mb-4 overflow-hidden">
+          <div class="border-b bg-gray-50 px-4 py-3">
+            <h3 class="font-semibold text-gray-800">Resumen de la venta</h3>
+            <p class="text-xs text-gray-500">Detalle simple para decidir cuanto cobrar.</p>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full min-w-[680px]">
+              <thead class="bg-white text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
+                <tr>
+                  <th class="px-4 py-3">Fecha</th>
+                  <th class="px-4 py-3">Comprobante</th>
+                  <th class="px-4 py-3 text-right">Total</th>
+                  <th class="px-4 py-3 text-right">Cobrado</th>
+                  <th class="px-4 py-3 text-right">Pendiente</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y">
+                <tr class="hover:bg-gray-50">
+                  <td class="px-4 py-3 text-sm text-gray-700">{{ formatDate(ventaCobroSeleccionada.fecha) }}</td>
+                  <td class="px-4 py-3 text-sm font-medium text-gray-800">{{ ventaCobroSeleccionada.numeroComprobante }}</td>
+                  <td class="px-4 py-3 text-sm text-right text-gray-700">{{ money(ventaCobroSeleccionada.total) }}</td>
+                  <td class="px-4 py-3 text-sm text-right text-emerald-700">{{ money(ventaCobroSeleccionada.totalPagado) }}</td>
+                  <td class="px-4 py-3 text-sm text-right font-semibold text-amber-700">{{ money(ventaCobroSeleccionada.saldoPendiente) }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="rounded-lg border p-4">
+          <h3 class="font-semibold text-gray-800 mb-3">Registrar cobro</h3>
+          <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+            <div>
+              <label class="text-sm text-gray-700">Forma de pago *</label>
+              <select v-model.number="cobroVentaForm.idFormaPago" class="w-full border px-3 py-2 rounded-md">
+                <option :value="0">Seleccionar</option>
+                <option v-for="forma in formasDePago" :key="forma.id" :value="forma.id">{{ forma.nombre }}</option>
+              </select>
             </div>
-            <div v-if="cobroClienteOpen && clientesFiltradosCobro.length" class="absolute z-20 w-full mt-1 bg-white border rounded-md shadow max-h-44 overflow-y-auto">
-              <button v-for="c in clientesFiltradosCobro" :key="c.id" type="button" class="w-full text-left px-3 py-2 hover:bg-gray-50 text-sm" @click="seleccionarClienteCobro(c)">
-                {{ c.nombreCompleto }} - Doc {{ c.documento }}
+            <div>
+              <div class="flex items-center justify-between gap-3">
+                <label class="text-sm text-gray-700">Importe *</label>
+                <button
+                  v-if="ventaCobroSeleccionada.saldoPendiente > 0"
+                  type="button"
+                  class="text-sm text-emerald-700 hover:text-emerald-800"
+                  @click="usarSaldoPendienteVenta"
+                >
+                  Pago total
+                </button>
+              </div>
+              <input
+                :value="cobroVentaImporteInput"
+                type="text"
+                inputmode="numeric"
+                class="w-full border px-3 py-2 rounded-md"
+                @input="actualizarCobroVentaImporte"
+              />
+            </div>
+            <div>
+              <label class="text-sm text-gray-700">Referencia</label>
+              <input v-model="cobroVentaForm.referencia" maxlength="120" class="w-full border px-3 py-2 rounded-md" />
+            </div>
+            <div class="flex items-end">
+              <button
+                @click="guardarCobroVenta"
+                :disabled="ventaCobroSeleccionada.saldoPendiente <= 0"
+                class="w-full bg-emerald-600 text-white px-4 py-2 rounded hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-emerald-300"
+              >
+                Registrar cobro
               </button>
             </div>
           </div>
-          <div><label class="text-sm text-gray-700">Forma de pago *</label>
-            <select v-model.number="cobroCliente.idFormaPago" class="w-full border px-3 py-2 rounded-md"><option :value="0">Seleccionar</option><option v-for="f in formasDePago" :key="f.id" :value="f.id">{{ f.nombre }}</option></select>
-          </div>
-          <div><label class="text-sm text-gray-700">Importe *</label><input v-model.number="cobroCliente.importe" type="number" min="1" step="1" class="w-full border px-3 py-2 rounded-md" /></div>
+          <p class="text-xs text-gray-500 mt-3">
+            El backend registra el cobro sobre el cliente asociado a esta venta.
+          </p>
         </div>
-        <div class="flex justify-end gap-2 mt-5"><button @click="cerrarModalCobroCliente" class="px-4 py-2 rounded bg-gray-200 hover:bg-gray-300">Cancelar</button><button @click="guardarCobroCliente" class="px-4 py-2 rounded bg-emerald-600 text-white hover:bg-emerald-700">Registrar cobro</button></div>
       </div>
     </div>
 
-    <div v-if="openDetalleModal && ventaDetalle" class="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-50">
+    <div
+      v-if="openAnularModal"
+      @click.self="cerrarConfirmacionAnulacion"
+      class="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-50"
+    >
+      <div class="bg-white rounded-lg shadow-lg w-full max-w-sm p-6">
+        <h2 class="text-lg font-bold mb-3 text-gray-800">Confirmar anulacion</h2>
+
+        <p class="text-sm text-gray-600 mb-4">Estas seguro de que queres anular esta venta?</p>
+
+        <div class="flex justify-end gap-2">
+          <button @click="cerrarConfirmacionAnulacion" class="px-4 py-2 rounded bg-gray-200 hover:bg-gray-300">Cancelar</button>
+
+          <button @click="confirmarAnulacion" class="px-4 py-2 rounded bg-red-500 text-white hover:bg-red-600">Anular</button>
+        </div>
+      </div>
+    </div>
+
+    <div v-if="openDetalleModal && ventaDetalle" @click.self="cerrarDetalleModal" class="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-50">
       <div class="bg-white rounded-lg shadow-lg w-full max-w-4xl p-6 max-h-[90vh] overflow-y-auto">
         <h2 class="text-lg font-bold mb-4">Detalle venta #{{ ventaDetalle.id }}</h2>
         <div class="grid grid-cols-2 gap-3 text-sm mb-4">
           <p><b>Comprobante:</b> {{ ventaDetalle.numeroComprobante }}</p>
           <p><b>Fecha:</b> {{ formatDate(ventaDetalle.fecha) }}</p>
           <p><b>Cliente:</b> {{ nombreCliente(ventaDetalle.idCliente) }}</p>
-          <p><b>Estado:</b> {{ ventaDetalle.estado === 2 ? "Anulada" : "Activa" }}</p>
+          <p><b>Estado:</b> {{ estaAnulada(ventaDetalle.estado) ? "Anulada" : "Activa" }}</p>
           <p><b>Total:</b> {{ money(ventaDetalle.total) }}</p>
           <p><b>Saldo pendiente:</b> {{ money(ventaDetalle.saldoPendiente) }}</p>
         </div>
 
         <h3 class="font-semibold mb-1">Productos</h3>
         <ul class="mb-4">
-          <li v-for="d in ventaDetalle.detalles || []" :key="d.id" class="text-sm border-b py-2">
-            {{ nombreProducto(d.idProducto) }} - {{ marcaProducto(d.idProducto) }} - Cantidad: {{ d.cantidad }} - PU: {{ money(d.precioUnitario) }} - Subtotal: {{ money((d.subtotal || (d.cantidad * d.precioUnitario))) }}
+          <li v-for="(d, index) in ventaDetalle.detalles || []" :key="d.id ?? `${d.idProducto}-${index}`" class="text-sm border-b py-2">
+            {{ nombreProducto(d.idProducto) }} - {{ marcaProducto(d.idProducto) }} - Cantidad: {{ d.cantidad }} - PU:
+            {{ money(d.precioUnitario) }} - Subtotal: {{ money(d.subtotal || d.cantidad * d.precioUnitario) }}
           </li>
           <li v-if="!(ventaDetalle.detalles || []).length" class="text-sm text-gray-400">Sin productos</li>
         </ul>
 
         <h3 class="font-semibold mb-1">Pagos</h3>
         <ul class="mb-5">
-          <li v-for="p in ventaDetalle.pagos || []" :key="p.id" class="text-sm border-b py-2">
+          <li v-for="(p, index) in ventaDetalle.pagos || []" :key="p.id ?? `${p.idFormaPago}-${index}`" class="text-sm border-b py-2">
             {{ nombreFormaPago(p.idFormaPago) }} - {{ money(p.importe) }} - {{ p.referencia || "-" }}
           </li>
           <li v-if="!(ventaDetalle.pagos || []).length" class="text-sm text-gray-400">Sin pagos</li>
@@ -246,98 +498,63 @@
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
+import { useClientesStore } from "@/modules/clientes/store";
+import type { Cliente } from "@/modules/clientes/types";
+import { useFormasDePagoStore } from "@/modules/formasDePagos/store";
+import { useMarcasStore } from "@/modules/marcas/store";
+import { useProductosStore } from "@/modules/productos/store";
+import type { Producto } from "@/modules/productos/types";
+import { useVendedoresStore } from "@/modules/vendedores/store";
+import type { Vendedor } from "@/modules/vendedores/types";
+import { useVentasStore } from "@/modules/ventas/store";
+import type { Venta } from "@/modules/ventas/types";
 import { useNotificationStore } from "@/stores/notificaciones";
 
 const notification = useNotificationStore();
+const ventasStore = useVentasStore();
+const clientesStore = useClientesStore();
+const vendedoresStore = useVendedoresStore();
+const productosStore = useProductosStore();
+const formasDePagoStore = useFormasDePagoStore();
+const marcasStore = useMarcasStore();
+
+const padDatePart = (value: number) => String(value).padStart(2, "0");
+const toInputDate = (date: Date) => `${date.getFullYear()}-${padDatePart(date.getMonth() + 1)}-${padDatePart(date.getDate())}`;
+const parseApiDate = (value: string) => {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    const parts = value.split("-").map(Number);
+    const year = parts[0] ?? 0;
+    const month = parts[1] ?? 1;
+    const day = parts[2] ?? 1;
+    return new Date(year, month - 1, day);
+  }
+  return new Date(value);
+};
 
 const hoy = new Date();
 const primerDiaMes = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
-const toInputDate = (d: Date) => d.toISOString().slice(0, 10);
 
 const desde = ref(toInputDate(primerDiaMes));
 const hasta = ref(toInputDate(hoy));
 const page = ref(1);
 const pageSize = 10;
 
-const clientes = ref(Array.from({ length: 25 }, (_, i) => ({ id: i + 1, nombreCompleto: `Cliente ${i + 1} Perez`, documento: `30${10000000 + i}` })));
-const vendedores = ref([{ id: 1, nombre: "Juan Soto" }, { id: 2, nombre: "Ana Diaz" }, { id: 3, nombre: "Martin Ruiz" }]);
-const productos = ref([
-  { id: 100, nombre: "Yerba Mate 1kg", marcaNombre: "La Merced" },
-  { id: 101, nombre: "Azucar 1kg", marcaNombre: "Ledesma" },
-  { id: 102, nombre: "Arroz Largo Fino 1kg", marcaNombre: "Gallo" },
-  { id: 103, nombre: "Fideos Spaghetti 500g", marcaNombre: "Matarazzo" },
-  { id: 104, nombre: "Aceite Girasol 900ml", marcaNombre: "Natura" },
-  { id: 105, nombre: "Leche Entera 1L", marcaNombre: "La Serenisima" },
-  { id: 106, nombre: "Galletitas Dulces 400g", marcaNombre: "Terrabusi" },
-  { id: 107, nombre: "Atun en Lata 170g", marcaNombre: "La Campagnola" },
-  { id: 108, nombre: "Pure de Tomate 520g", marcaNombre: "Arcor" },
-  { id: 109, nombre: "Jabon en Polvo 800g", marcaNombre: "Ala" },
-  { id: 110, nombre: "Cafe Molido 500g", marcaNombre: "Cabrales" },
-  { id: 111, nombre: "Te en Saquitos x50", marcaNombre: "Taragui" },
-  { id: 112, nombre: "Harina 000 1kg", marcaNombre: "Pureza" },
-  { id: 113, nombre: "Polenta 500g", marcaNombre: "Presto Pronta" },
-  { id: 114, nombre: "Lentejas 400g", marcaNombre: "Lucchetti" },
-  { id: 115, nombre: "Porotos Alubia 400g", marcaNombre: "Noel" },
-  { id: 116, nombre: "Mayonesa 500g", marcaNombre: "Hellmanns" },
-  { id: 117, nombre: "Ketchup 500g", marcaNombre: "Heinz" },
-  { id: 118, nombre: "Mostaza 250g", marcaNombre: "Savora" },
-  { id: 119, nombre: "Vinagre de Alcohol 1L", marcaNombre: "Menoyo" },
-  { id: 120, nombre: "Agua Mineral 2L", marcaNombre: "Eco de los Andes" },
-  { id: 121, nombre: "Gaseosa Cola 2.25L", marcaNombre: "Coca-Cola" },
-  { id: 122, nombre: "Gaseosa Lima 2.25L", marcaNombre: "Sprite" },
-  { id: 123, nombre: "Jugo Naranja 1L", marcaNombre: "Cepita" },
-  { id: 124, nombre: "Cerveza Rubia 1L", marcaNombre: "Quilmes" },
-  { id: 125, nombre: "Papel Higienico x4", marcaNombre: "Elite" },
-  { id: 126, nombre: "Servilletas x100", marcaNombre: "Sussex" },
-  { id: 127, nombre: "Detergente 750ml", marcaNombre: "Magistral" },
-  { id: 128, nombre: "Lavandina 1L", marcaNombre: "Ayudin" },
-  { id: 129, nombre: "Desinfectante Piso 900ml", marcaNombre: "Poett" },
-  { id: 130, nombre: "Shampoo 400ml", marcaNombre: "Sedal" },
-  { id: 131, nombre: "Acondicionador 400ml", marcaNombre: "Pantene" },
-  { id: 132, nombre: "Jabon Tocador x3", marcaNombre: "Dove" },
-  { id: 133, nombre: "Pasta Dental 90g", marcaNombre: "Colgate" },
-  { id: 134, nombre: "Cepillo Dental", marcaNombre: "Oral-B" },
-]);
-const formasDePago = ref([{ id: 1, nombre: "Efectivo" }, { id: 2, nombre: "Transferencia" }, { id: 3, nombre: "Tarjeta" }]);
-
-const ventas = ref(Array.from({ length: 40 }, (_, i) => {
-  const total = 15000 + i * 2300;
-  const pagado = i % 4 === 0 ? total : Math.floor(total * 0.45);
-  return {
-    id: i + 1,
-    numeroComprobante: `V-0001-${String(1000 + i).padStart(8, "0")}`,
-    fecha: new Date(hoy.getFullYear(), hoy.getMonth(), (i % 28) + 1).toISOString(),
-    idCliente: (i % 25) + 1,
-    idVendedor: (i % 3) + 1,
-    idSucursal: 1,
-    total,
-    totalPagado: pagado,
-    saldoPendiente: total - pagado,
-    estado: i % 11 === 0 ? 2 : 1,
-    observaciones: "Venta de prueba",
-    detalles: [{ id: 1, idProducto: 100 + (i % 10), cantidad: 2 + (i % 3), precioUnitario: 3000 + i * 40 }],
-    pagos: pagado > 0 ? [{ id: 1, idFormaPago: 1, importe: pagado, referencia: "Pago mock" }] : []
-  };
-}));
-
-const ventasFiltradas = ref([...ventas.value]);
 const openModal = ref(false);
-const openCobroClienteModal = ref(false);
+const openCobroVentaModal = ref(false);
+const openAnularModal = ref(false);
 const openDetalleModal = ref(false);
-const ventaDetalle = ref<any | null>(null);
+const ventaDetalle = ref<Venta | null>(null);
+const ventaCobroSeleccionada = ref<Venta | null>(null);
+const ventaAAnular = ref<number | null>(null);
 const clienteOpen = ref(false);
 const productoOpen = ref(false);
-const productoDropdownArriba = ref(false);
-const cobroClienteOpen = ref(false);
 const vendedorOpen = ref(false);
 const clienteBox = ref<HTMLElement | null>(null);
 const vendedorBox = ref<HTMLElement | null>(null);
 const productoBox = ref<HTMLElement | null>(null);
-const cobroClienteBox = ref<HTMLElement | null>(null);
 
 const clienteSearch = ref("");
 const productoSearch = ref("");
-const cobroClienteSearch = ref("");
 const vendedorSearch = ref("");
 
 const form = ref({
@@ -349,34 +566,79 @@ const form = ref({
   detalles: [] as Array<{ idProducto: number; cantidad: number; precioUnitario: number }>,
   pagos: [] as Array<{ idFormaPago: number; importe: number; referencia?: string }>,
 });
-const nuevoDetalle = ref({ idProducto: 0, cantidad: 1, precioUnitario: 0 });
-const cobroCliente = ref({ idCliente: 0, importe: 0, idFormaPago: 0, referencia: "" });
+
+const nuevoDetalle = ref({
+  idProducto: 0,
+  cantidad: 1,
+  precioUnitario: 0,
+});
+const nuevoDetallePrecioInput = ref("");
+const cobroVentaForm = ref({
+  idFormaPago: 0,
+  importe: 0,
+  referencia: "",
+});
+const cobroVentaImporteInput = ref("");
+
 const pagarTodo = ref(false);
 
+const clientes = computed(() => clientesStore.clientes.filter(c => c.activo));
+const vendedores = computed(() => vendedoresStore.vendedores.filter(v => v.activo));
+const productos = computed(() => productosStore.productos.filter(p => p.activo));
+const formasDePago = computed(() => formasDePagoStore.formasDePago);
+const ventasFiltradas = computed(() => ventasStore.ventas);
 const totalPaginas = computed(() => Math.max(1, Math.ceil(ventasFiltradas.value.length / pageSize)));
-const ventasPaginadas = computed(() => ventasFiltradas.value.slice((page.value - 1) * pageSize, page.value * pageSize));
-const totalCalculado = computed(() => form.value.detalles.reduce((acc, d) => acc + d.cantidad * d.precioUnitario, 0));
-const clientesFiltrados = computed(() => clientes.value.filter(c => (`${c.nombreCompleto} ${c.documento}`).toLowerCase().includes(clienteSearch.value.toLowerCase())).slice(0, 8));
-const clientesFiltradosCobro = computed(() => clientes.value.filter(c => (`${c.nombreCompleto} ${c.documento}`).toLowerCase().includes(cobroClienteSearch.value.toLowerCase())).slice(0, 8));
-const productosFiltrados = computed(() => productos.value.filter(p => (`${p.nombre} ${p.marcaNombre}`).toLowerCase().includes(productoSearch.value.toLowerCase())).slice(0, 10));
-const vendedoresFiltrados = computed(() => vendedores.value.filter(v => v.nombre.toLowerCase().includes(vendedorSearch.value.toLowerCase())).slice(0, 8));
+const ventasPaginadas = computed(() => {
+  const start = (page.value - 1) * pageSize;
+  return ventasFiltradas.value.slice(start, start + pageSize);
+});
+const totalCalculado = computed(() => form.value.detalles.reduce((acc, d) => acc + (Number(d.cantidad) || 0) * (Number(d.precioUnitario) || 0), 0));
+const clientesFiltrados = computed(() =>
+  clientes.value.filter(c => `${c.nombreCompleto} ${c.nroDocumento || ""}`.toLowerCase().includes(clienteSearch.value.toLowerCase())).slice(0, 8),
+);
+const productosFiltrados = computed(() =>
+  productos.value.filter(p => `${p.nombre} ${p.marca || ""}`.toLowerCase().includes(productoSearch.value.toLowerCase())).slice(0, 10),
+);
+const vendedoresFiltrados = computed(() =>
+  vendedores.value.filter(v => `${v.nombre} ${v.apellido}`.toLowerCase().includes(vendedorSearch.value.toLowerCase())).slice(0, 8),
+);
+const productoSeleccionado = computed(() => productosStore.productos.find(x => Number(x.id) === Number(nuevoDetalle.value.idProducto)) ?? null);
 
-const abrirBuscadorProducto = () => {
-  productoOpen.value = true;
-  const espacioAbajo = window.innerHeight - 420;
-  productoDropdownArriba.value = espacioAbajo < 260;
-};
+const buscarVentas = async () => {
+  if (!desde.value || !hasta.value) {
+    page.value = 1;
+    return;
+  }
 
-const buscarVentas = () => {
-  const d = new Date(`${desde.value}T00:00:00`);
-  const h = new Date(`${hasta.value}T23:59:59`);
-  if (d > h) return notification.show("La fecha 'desde' no puede ser mayor que 'hasta'", "error");
-  ventasFiltradas.value = ventas.value.filter(v => new Date(v.fecha) >= d && new Date(v.fecha) <= h);
+  const desdeDate = new Date(`${desde.value}T00:00:00`);
+  const hastaDate = new Date(`${hasta.value}T23:59:59`);
+
+  if (Number.isNaN(desdeDate.getTime()) || Number.isNaN(hastaDate.getTime())) {
+    notification.show("Las fechas ingresadas no son validas", "error");
+    return;
+  }
+
+  if (desdeDate > hastaDate) {
+    notification.show("La fecha 'desde' no puede ser mayor que 'hasta'", "error");
+    return;
+  }
+
+  await ventasStore.fetchVentas(desde.value, hasta.value);
   page.value = 1;
 };
 
 const abrirCrear = () => {
-  form.value = { numeroComprobante: "", idCliente: 0, idVendedor: 0, idSucursal: 1, observaciones: "", detalles: [], pagos: [] };
+  form.value = {
+    numeroComprobante: "",
+    idCliente: 0,
+    idVendedor: 0,
+    idSucursal: 1,
+    observaciones: "",
+    detalles: [],
+    pagos: [],
+  };
+  nuevoDetalle.value = { idProducto: 0, cantidad: 1, precioUnitario: 0 };
+  nuevoDetallePrecioInput.value = "";
   pagarTodo.value = false;
   clienteSearch.value = "";
   productoSearch.value = "";
@@ -384,60 +646,101 @@ const abrirCrear = () => {
   clienteOpen.value = false;
   productoOpen.value = false;
   vendedorOpen.value = false;
-  nuevoDetalle.value = { idProducto: 0, cantidad: 1, precioUnitario: 0 };
   openModal.value = true;
 };
-const cerrarModal = () => (openModal.value = false);
 
-const seleccionarCliente = (cliente: { id: number; nombreCompleto: string; documento: string }) => {
+const cerrarModal = () => {
+  openModal.value = false;
+};
+
+const seleccionarCliente = (cliente: Cliente) => {
   form.value.idCliente = cliente.id;
-  clienteSearch.value = `${cliente.nombreCompleto} - Doc ${cliente.documento}`;
+  clienteSearch.value = `${cliente.nombreCompleto} - Doc ${cliente.nroDocumento || "-"}`;
   clienteOpen.value = false;
 };
+
 const limpiarCliente = () => {
   form.value.idCliente = 0;
   clienteSearch.value = "";
 };
-const seleccionarProducto = (producto: { id: number; nombre: string; marcaNombre: string }) => {
-  nuevoDetalle.value.idProducto = producto.id;
-  productoSearch.value = `${producto.nombre} - ${producto.marcaNombre}`;
-  productoOpen.value = false;
-};
-const limpiarProducto = () => {
-  nuevoDetalle.value.idProducto = 0;
-  productoSearch.value = "";
-};
-const seleccionarClienteCobro = (cliente: { id: number; nombreCompleto: string; documento: string }) => {
-  cobroCliente.value.idCliente = cliente.id;
-  cobroClienteSearch.value = `${cliente.nombreCompleto} - Doc ${cliente.documento}`;
-  cobroClienteOpen.value = false;
-};
-const limpiarClienteCobro = () => {
-  cobroCliente.value.idCliente = 0;
-  cobroClienteSearch.value = "";
-};
-const seleccionarVendedor = (vendedor: { id: number; nombre: string }) => {
+
+const seleccionarVendedor = (vendedor: Vendedor) => {
   form.value.idVendedor = vendedor.id;
-  vendedorSearch.value = vendedor.nombre;
+  vendedorSearch.value = `${vendedor.nombre} ${vendedor.apellido}`.trim();
   vendedorOpen.value = false;
 };
+
 const limpiarVendedor = () => {
   form.value.idVendedor = 0;
   vendedorSearch.value = "";
 };
 
-const agregarDetalle = () => {
-  const { idProducto, cantidad, precioUnitario } = nuevoDetalle.value;
-  if (!idProducto) return notification.show("Seleccioná un producto", "error");
-  if (cantidad <= 0 || precioUnitario <= 0) return notification.show("Cantidad y precio deben ser mayores a 0", "error");
-  if (form.value.detalles.some(d => d.idProducto === idProducto)) return notification.show("Producto repetido", "error");
-  form.value.detalles.push({ idProducto, cantidad, precioUnitario });
-  nuevoDetalle.value = { idProducto: 0, cantidad: 1, precioUnitario: 0 };
+const seleccionarProducto = (producto: Producto) => {
+  nuevoDetalle.value.idProducto = producto.id;
+  nuevoDetalle.value.precioUnitario = Math.max(1, Math.round(producto.precioVenta || 0));
+  nuevoDetallePrecioInput.value = formatoMiles(nuevoDetalle.value.precioUnitario);
+  productoSearch.value = producto.nombre;
+  productoOpen.value = false;
+};
+
+const limpiarProducto = () => {
+  nuevoDetalle.value.idProducto = 0;
+  nuevoDetalle.value.precioUnitario = 0;
+  nuevoDetallePrecioInput.value = "";
   productoSearch.value = "";
 };
+
+const actualizarNuevoDetallePrecio = (event: Event) => {
+  const target = event.target as HTMLInputElement;
+  const soloDigitos = target.value.replace(/\D/g, "");
+  const valor = soloDigitos ? Number(soloDigitos) : 0;
+
+  nuevoDetalle.value.precioUnitario = valor;
+  nuevoDetallePrecioInput.value = soloDigitos ? formatoMiles(valor) : "";
+};
+
+const actualizarCobroVentaImporte = (event: Event) => {
+  const target = event.target as HTMLInputElement;
+  const soloDigitos = target.value.replace(/\D/g, "");
+  const valor = soloDigitos ? Number(soloDigitos) : 0;
+
+  cobroVentaForm.value.importe = valor;
+  cobroVentaImporteInput.value = soloDigitos ? formatoMiles(valor) : "";
+};
+
+const agregarDetalle = () => {
+  const { idProducto, cantidad, precioUnitario } = nuevoDetalle.value;
+  if (idProducto <= 0) return notification.show("Selecciona un producto", "error");
+  if (cantidad <= 0 || !Number.isInteger(cantidad)) return notification.show("La cantidad debe ser un numero entero mayor a 0", "error");
+  if (precioUnitario <= 0 || !Number.isInteger(precioUnitario)) return notification.show("El precio unitario debe ser un numero entero mayor a 0", "error");
+  if (form.value.detalles.some(d => d.idProducto === idProducto)) return notification.show("Ese producto ya esta agregado en la tabla", "error");
+
+  form.value.detalles.push({ idProducto, cantidad, precioUnitario });
+  nuevoDetalle.value = { idProducto: 0, cantidad: 1, precioUnitario: 0 };
+  nuevoDetallePrecioInput.value = "";
+  productoSearch.value = "";
+};
+
 const quitarDetalle = (idx: number) => form.value.detalles.splice(idx, 1);
+
+const normalizarDetalle = (idx: number) => {
+  const item = form.value.detalles[idx];
+  if (!item) return;
+
+  if (!Number.isInteger(item.cantidad) || item.cantidad <= 0) {
+    item.cantidad = 1;
+    notification.show("La cantidad debe ser un numero entero mayor a 0", "error");
+  }
+
+  if (!Number.isFinite(item.precioUnitario) || item.precioUnitario <= 0 || !Number.isInteger(item.precioUnitario)) {
+    item.precioUnitario = Math.max(1, Math.round(item.precioUnitario || 0));
+    notification.show("El precio unitario debe ser un numero entero mayor a 0", "error");
+  }
+};
+
 const agregarPago = () => form.value.pagos.push({ idFormaPago: 0, importe: 0, referencia: "" });
 const quitarPago = (idx: number) => form.value.pagos.splice(idx, 1);
+
 const togglePagarTodo = () => {
   if (pagarTodo.value) {
     form.value.pagos = [{ idFormaPago: 0, importe: totalCalculado.value, referencia: "Pago total" }];
@@ -446,107 +749,231 @@ const togglePagarTodo = () => {
   form.value.pagos = [];
 };
 
-const guardarVenta = () => {
-  if (!form.value.numeroComprobante.trim()) return notification.show("Comprobante obligatorio", "error");
-  if (!form.value.idCliente) return notification.show("Seleccioná cliente", "error");
-  if (!form.value.idVendedor) return notification.show("Seleccioná vendedor", "error");
-  if (!form.value.detalles.length) return notification.show("Agregá al menos un producto", "error");
-  if (pagarTodo.value && form.value.pagos.length) {
-    form.value.pagos[0].importe = totalCalculado.value;
+const bloquearDecimal = (event: KeyboardEvent) => {
+  if (event.key === "." || event.key === ",") {
+    event.preventDefault();
   }
-  const total = totalCalculado.value;
-  const pagosValidos = form.value.pagos.filter(p => p.idFormaPago > 0 && p.importe > 0);
-  const totalPagado = pagosValidos.reduce((acc, p) => acc + p.importe, 0);
-  if (totalPagado > total) return notification.show("Los pagos no pueden superar el total", "error");
-  ventas.value.unshift({
-    id: Math.max(...ventas.value.map(v => v.id), 0) + 1,
-    numeroComprobante: form.value.numeroComprobante,
-    fecha: new Date().toISOString(),
+};
+
+const guardarVenta = async () => {
+  if (!form.value.numeroComprobante.trim()) return notification.show("El numero de comprobante es obligatorio", "error");
+  if (form.value.idCliente <= 0) return notification.show("Debe seleccionar un cliente", "error");
+  if (form.value.idVendedor <= 0) return notification.show("Debe seleccionar un vendedor", "error");
+  if (form.value.idSucursal <= 0) return notification.show("La sucursal es obligatoria", "error");
+  if (!form.value.detalles.length) return notification.show("Debe agregar al menos un detalle", "error");
+
+  if (pagarTodo.value && form.value.pagos.length) {
+    const primerPago = form.value.pagos[0];
+    if (primerPago) {
+      primerPago.importe = totalCalculado.value;
+    }
+  }
+
+  for (const d of form.value.detalles) {
+    if (d.idProducto <= 0 || d.cantidad <= 0 || d.precioUnitario <= 0) {
+      return notification.show("Revisa los detalles: producto, cantidad y precio deben ser mayores a 0", "error");
+    }
+    if (!Number.isInteger(d.cantidad)) {
+      return notification.show("La cantidad debe ser un numero entero", "error");
+    }
+  }
+
+  const detalles = form.value.detalles.map(d => ({
+    idProducto: d.idProducto,
+    cantidad: d.cantidad,
+    precioUnitario: d.precioUnitario,
+  }));
+
+  const pagos = form.value.pagos
+    .filter(p => p.idFormaPago > 0 && p.importe > 0)
+    .map(p => ({
+      idFormaPago: p.idFormaPago,
+      importe: p.importe,
+      referencia: p.referencia,
+    }));
+
+  const total = form.value.detalles.reduce((acc, d) => acc + d.cantidad * d.precioUnitario, 0);
+  const totalPagado = pagos.reduce((acc, p) => acc + p.importe, 0);
+  if (totalPagado > total) {
+    return notification.show("Los pagos no pueden superar el total de la venta", "error");
+  }
+
+  const idVenta = await ventasStore.addVenta({
+    numeroComprobante: form.value.numeroComprobante.trim(),
     idCliente: form.value.idCliente,
     idVendedor: form.value.idVendedor,
-    idSucursal: 1,
-    total,
-    totalPagado,
-    saldoPendiente: total - totalPagado,
-    estado: 1,
-    observaciones: form.value.observaciones,
-    detalles: form.value.detalles.map((d, i) => ({ ...d, id: i + 1, subtotal: d.cantidad * d.precioUnitario })),
-    pagos: pagosValidos.map((p, i) => ({ id: i + 1, idFormaPago: p.idFormaPago, importe: p.importe, referencia: p.referencia || "Pago inicial mock" }))
+    idSucursal: form.value.idSucursal,
+    observaciones: form.value.observaciones?.trim() || undefined,
+    detalles,
+    pagos,
   });
-  buscarVentas();
+
+  if (!idVenta) return;
+
   openModal.value = false;
-  notification.show("Venta creada correctamente (mock)", "success");
+  await Promise.all([buscarVentas(), productosStore.fetchProductos()]);
 };
 
-const anular = (id: number) => {
-  const venta = ventas.value.find(v => v.id === id);
-  if (!venta) return;
-  venta.estado = 2;
-  notification.show("Venta anulada correctamente (mock)", "success");
-  buscarVentas();
-};
-
-const verDetalle = (id: number) => {
-  const venta = ventas.value.find(v => v.id === id);
-  if (!venta) return;
-  ventaDetalle.value = venta;
+const verDetalle = async (id: number) => {
+  ventaDetalle.value = await ventasStore.fetchVentaPorId(id);
+  if (!ventaDetalle.value) return;
   openDetalleModal.value = true;
 };
+
 const cerrarDetalleModal = () => {
   openDetalleModal.value = false;
   ventaDetalle.value = null;
 };
 
-const abrirModalCobroCliente = () => {
-  cobroCliente.value = { idCliente: 0, idFormaPago: 0, importe: 0, referencia: "" };
-  cobroClienteSearch.value = "";
-  openCobroClienteModal.value = true;
+const abrirConfirmacionAnulacion = (id: number) => {
+  ventaAAnular.value = id;
+  openAnularModal.value = true;
 };
-const cerrarModalCobroCliente = () => (openCobroClienteModal.value = false);
 
-const guardarCobroCliente = () => {
-  const { idCliente, idFormaPago, importe } = cobroCliente.value;
-  if (!idCliente || !idFormaPago || importe <= 0) return notification.show("Completá cliente, forma de pago e importe", "error");
-  let restante = importe;
-  const pendientes = ventas.value.filter(v => v.idCliente === idCliente && v.estado === 1 && v.saldoPendiente > 0).sort((a, b) => +new Date(a.fecha) - +new Date(b.fecha));
-  if (!pendientes.length) return notification.show("Ese cliente no tiene saldo pendiente", "error");
-  for (const v of pendientes) {
-    if (restante <= 0) break;
-    const monto = Math.min(v.saldoPendiente, restante);
-    v.totalPagado += monto;
-    v.saldoPendiente -= monto;
-    v.pagos.push({ id: v.pagos.length + 1, idFormaPago, importe: monto, referencia: "Cobro mock" });
-    restante -= monto;
+const cerrarConfirmacionAnulacion = () => {
+  ventaAAnular.value = null;
+  openAnularModal.value = false;
+};
+
+const confirmarAnulacion = async () => {
+  if (!ventaAAnular.value) return;
+
+  const ok = await ventasStore.cancelarVenta(ventaAAnular.value);
+  if (!ok) return;
+  await Promise.all([buscarVentas(), productosStore.fetchProductos()]);
+  cerrarConfirmacionAnulacion();
+};
+
+const abrirCobroVenta = (venta: Venta) => {
+  ventaCobroSeleccionada.value = venta;
+  cobroVentaForm.value = { idFormaPago: 0, importe: 0, referencia: "" };
+  cobroVentaImporteInput.value = "";
+  openCobroVentaModal.value = true;
+};
+
+const cerrarCobroVenta = () => {
+  openCobroVentaModal.value = false;
+  ventaCobroSeleccionada.value = null;
+  cobroVentaForm.value = { idFormaPago: 0, importe: 0, referencia: "" };
+  cobroVentaImporteInput.value = "";
+};
+
+const usarSaldoPendienteVenta = () => {
+  if (!ventaCobroSeleccionada.value) return;
+  cobroVentaForm.value.importe = ventaCobroSeleccionada.value.saldoPendiente;
+  cobroVentaImporteInput.value = formatoMiles(cobroVentaForm.value.importe);
+};
+
+const guardarCobroVenta = async () => {
+  if (!ventaCobroSeleccionada.value) return;
+
+  const { idFormaPago, importe, referencia } = cobroVentaForm.value;
+  if (ventaCobroSeleccionada.value.saldoPendiente <= 0) {
+    return notification.show("La venta no tiene saldo pendiente para cobrar", "error");
   }
-  openCobroClienteModal.value = false;
-  buscarVentas();
-  notification.show("Cobro registrado correctamente (mock)", "success");
+  if (idFormaPago <= 0) return notification.show("Debe seleccionar una forma de pago", "error");
+  if (importe <= 0) return notification.show("El importe debe ser mayor a 0", "error");
+  if (importe > ventaCobroSeleccionada.value.saldoPendiente) {
+    return notification.show("El importe no puede superar el saldo pendiente", "error");
+  }
+
+  const ok = await ventasStore.registrarCobro({
+    idCliente: ventaCobroSeleccionada.value.idCliente,
+    importe,
+    idFormaPago,
+    referencia: referencia?.trim() || "",
+  });
+
+  if (!ok) return;
+
+  const idVenta = ventaCobroSeleccionada.value.id;
+  await buscarVentas();
+  ventaCobroSeleccionada.value = await ventasStore.fetchVentaPorId(idVenta);
+  cobroVentaForm.value = { idFormaPago: 0, importe: 0, referencia: "" };
+  cobroVentaImporteInput.value = "";
+
+  if (!ventaCobroSeleccionada.value || ventaCobroSeleccionada.value.saldoPendiente <= 0) {
+    cerrarCobroVenta();
+  }
 };
 
-const nombreCliente = (idCliente: number) => clientes.value.find(c => c.id === idCliente)?.nombreCompleto || `Cliente #${idCliente}`;
-const nombreProducto = (idProducto: number) => productos.value.find(p => p.id === idProducto)?.nombre || `Producto #${idProducto}`;
-const marcaProducto = (idProducto: number) => productos.value.find(p => p.id === idProducto)?.marcaNombre || "-";
-const nombreFormaPago = (idFormaPago: number) => formasDePago.value.find(f => f.id === idFormaPago)?.nombre || `Forma #${idFormaPago}`;
-const money = (value: number) => new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", minimumFractionDigits: 2 }).format(value || 0);
+const estaAnulada = (estado: string | number) => {
+  const normalizado = String(estado ?? "").trim().toLowerCase();
+  return normalizado === "2" || normalizado === "anulada";
+};
+
+const nombreCliente = (idCliente: number) => {
+  const cliente = clientesStore.clientes.find(x => x.id === idCliente);
+  return cliente?.nombreCompleto || `Cliente #${idCliente}`;
+};
+
+const nombreFormaPago = (idFormaPago: number) => {
+  const forma = formasDePagoStore.formasDePago.find(x => x.id === idFormaPago);
+  return forma?.nombre || `Forma #${idFormaPago}`;
+};
+
+const nombreProducto = (idProducto: number) => {
+  const producto = productosStore.productos.find(x => x.id === idProducto);
+  return producto?.nombre || `Producto #${idProducto}`;
+};
+
+const nombreMarcaProducto = (producto: Producto & { marcaNombre?: string; idMarca?: number }) => {
+  if (producto?.marca?.trim()) return producto.marca.trim();
+  if (producto?.marcaNombre?.trim()) return producto.marcaNombre.trim();
+
+  const idMarca = Number(producto?.idMarca ?? 0);
+  if (idMarca > 0) {
+    return marcasStore.marcas.find(x => x.id === idMarca)?.nombre || "-";
+  }
+
+  return "-";
+};
+
+const marcaProducto = (idProducto: number) => {
+  const producto = productosStore.productos.find(x => Number(x.id) === Number(idProducto)) as (Producto & { marcaNombre?: string; idMarca?: number }) | undefined;
+  return producto ? nombreMarcaProducto(producto) : "-";
+};
+
+const stockProducto = (idProducto: number) => {
+  const producto = productosStore.productos.find(x => Number(x.id) === Number(idProducto)) as (Producto & { stock?: number }) | undefined;
+  return producto?.stockActual ?? producto?.stock ?? "-";
+};
+
+const precioVentaProducto = (idProducto: number) => {
+  const producto = productosStore.productos.find(x => Number(x.id) === Number(idProducto)) as (Producto & { precio?: number }) | undefined;
+  return money(producto?.precioVenta ?? producto?.precio ?? 0);
+};
+
+const money = (value: number) =>
+  new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", minimumFractionDigits: 2 }).format(value || 0);
+
 const formatoMiles = (value: number) => new Intl.NumberFormat("es-AR", { maximumFractionDigits: 0 }).format(value || 0);
-const formatDate = (value: string) => (value ? new Date(value).toLocaleDateString("es-AR") : "-");
+
+const formatDate = (value: string) => {
+  if (!value) return "-";
+  return parseApiDate(value).toLocaleDateString("es-AR");
+};
 
 const handleClickOutside = (event: MouseEvent) => {
   const target = event.target as Node;
   if (clienteBox.value && !clienteBox.value.contains(target)) clienteOpen.value = false;
   if (vendedorBox.value && !vendedorBox.value.contains(target)) vendedorOpen.value = false;
   if (productoBox.value && !productoBox.value.contains(target)) productoOpen.value = false;
-  if (cobroClienteBox.value && !cobroClienteBox.value.contains(target)) cobroClienteOpen.value = false;
 };
 
-onMounted(() => {
+onMounted(async () => {
   document.addEventListener("click", handleClickOutside);
+  await Promise.all([
+    clientesStore.fetchClientes(),
+    vendedoresStore.fetchVendedores(),
+    marcasStore.fetchMarcas(),
+    productosStore.fetchProductos(),
+    formasDePagoStore.fetchFormasDePago(),
+    buscarVentas(),
+  ]);
 });
 
 onBeforeUnmount(() => {
   document.removeEventListener("click", handleClickOutside);
 });
-
-buscarVentas();
 </script>
-

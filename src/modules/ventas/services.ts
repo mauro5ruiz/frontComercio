@@ -21,6 +21,11 @@ export const anularVenta = async (id: number): Promise<{ mensaje: string }> => {
   return data;
 };
 
+export const obtenerPendientesPorCliente = async (idCliente: number): Promise<Venta[]> => {
+  const { data } = await api.get(`/ventas/pendientes/cliente/${idCliente}`);
+  return data;
+};
+
 export const cobrarCliente = async (dto: CobrarClienteDTO): Promise<{ mensaje: string }> => {
   const { data } = await api.post("/ventas/cobrar", dto);
   return data;
