@@ -3,6 +3,7 @@ export interface DetalleCompra {
   idCompra?: number;
   idProducto: number;
   cantidad: number;
+  cantidadDevuelta?: number;
   precioUnitario: number;
   subtotal?: number;
 }
