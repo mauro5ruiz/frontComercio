@@ -5,11 +5,14 @@
       <p class="text-sm text-gray-500">Resumen general del sistema</p>
     </div>
 
-    <div v-if="loadingGeneral" class="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-500 shadow-sm">
+    <div
+      v-if="loadingGeneral"
+      class="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-500 shadow-sm"
+    >
       Cargando resumen del sistema...
     </div>
 
-    <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+    <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-5">
       <div
         v-for="card in cardsResumen"
         :key="card.titulo"
@@ -160,11 +163,39 @@ const cardsResumen = computed(() => {
       colorClase: colorVariacion(cards.ventasMesActual, cards.ventasMesAnterior),
     },
     {
+      titulo: "Devoluciones de ventas",
+      valor: money(cards.devolucionesVentasMesActual),
+      icono: "↩️",
+      variacion: textoVariacion(
+        cards.devolucionesVentasMesActual,
+        cards.devolucionesVentasMesAnterior,
+        "respecto al mes anterior",
+      ),
+      colorClase: colorVariacionInvertida(
+        cards.devolucionesVentasMesActual,
+        cards.devolucionesVentasMesAnterior,
+      ),
+    },
+    {
       titulo: "Compras del mes",
       valor: money(cards.comprasMesActual),
       icono: "🛒",
       variacion: textoVariacion(cards.comprasMesActual, cards.comprasMesAnterior, "respecto al mes anterior"),
       colorClase: colorVariacion(cards.comprasMesActual, cards.comprasMesAnterior),
+    },
+    {
+      titulo: "Devoluciones de compras",
+      valor: money(cards.devolucionesComprasMesActual),
+      icono: "📦",
+      variacion: textoVariacion(
+        cards.devolucionesComprasMesActual,
+        cards.devolucionesComprasMesAnterior,
+        "respecto al mes anterior",
+      ),
+      colorClase: colorVariacionInvertida(
+        cards.devolucionesComprasMesActual,
+        cards.devolucionesComprasMesAnterior,
+      ),
     },
     {
       titulo: "Perdidas registradas",
@@ -187,7 +218,9 @@ const modulos = computed(() => {
     { nombre: "Ofertas", cantidad: modulosApi.ofertasActivas, icono: "🔥", descripcion: "Promociones activas" },
     { nombre: "Perdidas", cantidad: modulosApi.perdidas, icono: "⚠️", descripcion: "Registros de perdidas" },
     { nombre: "Ventas", cantidad: modulosApi.ventas, icono: "💵", descripcion: "Ventas registradas" },
+    { nombre: "Dev. ventas", cantidad: modulosApi.devolucionesVentas, icono: "↩️", descripcion: "Devoluciones de ventas" },
     { nombre: "Compras", cantidad: modulosApi.compras, icono: "🛒", descripcion: "Compras a proveedores" },
+    { nombre: "Dev. compras", cantidad: modulosApi.devolucionesCompras, icono: "📥", descripcion: "Devoluciones a proveedores" },
     { nombre: "Clientes", cantidad: modulosApi.clientes, icono: "👥", descripcion: "Clientes registrados" },
     { nombre: "Proveedores", cantidad: modulosApi.proveedores, icono: "🚚", descripcion: "Proveedores cargados" },
     { nombre: "Vendedores", cantidad: modulosApi.vendedores, icono: "🧑‍💼", descripcion: "Vendedores del sistema" },

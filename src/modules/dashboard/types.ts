@@ -1,8 +1,12 @@
 export interface DashboardCardsDto {
   ventasMesActual: number;
   ventasMesAnterior: number;
+  devolucionesVentasMesActual: number;
+  devolucionesVentasMesAnterior: number;
   comprasMesActual: number;
   comprasMesAnterior: number;
+  devolucionesComprasMesActual: number;
+  devolucionesComprasMesAnterior: number;
   perdidasMesActual: number;
   perdidasMesAnterior: number;
 }
@@ -14,7 +18,9 @@ export interface DashboardModulosDto {
   ofertasActivas: number;
   perdidas: number;
   ventas: number;
+  devolucionesVentas: number;
   compras: number;
+  devolucionesCompras: number;
   clientes: number;
   proveedores: number;
   vendedores: number;
