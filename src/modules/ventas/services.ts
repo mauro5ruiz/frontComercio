@@ -6,6 +6,11 @@ export const obtenerVentasEntreFechas = async (desde: string, hasta: string): Pr
   return data;
 };
 
+export const obtenerVentasPorEstado = async (idEstado: number): Promise<Venta[]> => {
+  const { data } = await api.get("/ventas/estado", { params: { idEstado } });
+  return data;
+};
+
 export const obtenerVentaPorId = async (id: number): Promise<Venta> => {
   const { data } = await api.get(`/ventas/${id}`);
   return data;

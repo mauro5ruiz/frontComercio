@@ -9,7 +9,8 @@
       </div>
       <div>
         <label class="text-sm text-gray-600">Hasta</label>
-        <input v-model="hasta" type="date" :min="desde || undefined" class="w-full border px-3 py-2 rounded-md" @blur=      </div>
+        <input v-model="hasta" type="date" :min="desde || undefined" class="w-full border px-3 py-2 rounded-md" @blur="buscarVentas" />
+      </div>
     </div>
 
     <div class="flex justify-end mb-4">
