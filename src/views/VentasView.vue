@@ -2,7 +2,7 @@
   <div class="p-6">
     <h1 class="text-2xl font-bold mb-4">Ventas</h1>
 
-    <div class="bg-white rounded-xl shadow p-4 mb-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+    <div class="bg-white rounded-xl shadow p-4 mb-4 grid grid-cols-1 md:grid-cols-3 gap-3">
       <div>
         <label class="text-sm text-gray-600">Desde</label>
         <input v-model="desde" type="date" :max="hasta || undefined" class="w-full border px-3 py-2 rounded-md" @blur="buscarVentas" />
@@ -10,6 +10,37 @@
       <div>
         <label class="text-sm text-gray-600">Hasta</label>
         <input v-model="hasta" type="date" :min="desde || undefined" class="w-full border px-3 py-2 rounded-md" @blur="buscarVentas" />
+      </div>
+      <div ref="filtroClienteBox" class="relative">
+        <label class="text-sm text-gray-600">Cliente</label>
+        <div class="relative">
+          <input
+            v-model="filtroClienteSearch"
+            class="w-full border px-3 py-2 rounded-md pr-8"
+            placeholder="Filtrar por cliente"
+            @focus="filtroClienteOpen = true"
+            @input="filtroClienteId = 0; page = 1"
+          />
+          <button
+            v-if="filtroClienteId > 0 || filtroClienteSearch"
+            type="button"
+            class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700 text-sm"
+            @click="limpiarFiltroCliente"
+          >
+            x
+          </button>
+        </div>
+        <div v-if="filtroClienteOpen && clientesFiltroBusqueda.length" class="absolute z-20 w-full mt-1 bg-white border rounded-md shadow max-h-44 overflow-y-auto">
+          <button
+            v-for="c in clientesFiltroBusqueda"
+            :key="c.id"
+            type="button"
+            class="w-full text-left px-3 py-2 hover:bg-gray-50 text-sm"
+            @click="seleccionarFiltroCliente(c)"
+          >
+            {{ c.nombreCompleto }} - Doc {{ c.nroDocumento || "-" }}
+          </button>
+        </div>
       </div>
     </div>
 
@@ -549,13 +580,17 @@ const ventaAAnular = ref<number | null>(null);
 const clienteOpen = ref(false);
 const productoOpen = ref(false);
 const vendedorOpen = ref(false);
+const filtroClienteOpen = ref(false);
 const clienteBox = ref<HTMLElement | null>(null);
 const vendedorBox = ref<HTMLElement | null>(null);
 const productoBox = ref<HTMLElement | null>(null);
+const filtroClienteBox = ref<HTMLElement | null>(null);
 
 const clienteSearch = ref("");
 const productoSearch = ref("");
 const vendedorSearch = ref("");
+const filtroClienteSearch = ref("");
+const filtroClienteId = ref(0);
 
 const form = ref({
   numeroComprobante: "",
@@ -586,7 +621,21 @@ const clientes = computed(() => clientesStore.clientes.filter(c => c.activo));
 const vendedores = computed(() => vendedoresStore.vendedores.filter(v => v.activo));
 const productos = computed(() => productosStore.productos.filter(p => p.activo));
 const formasDePago = computed(() => formasDePagoStore.formasDePago);
-const ventasFiltradas = computed(() => ventasStore.ventas);
+const ventasFiltradas = computed(() => {
+  const termino = filtroClienteSearch.value.trim().toLowerCase();
+
+  return ventasStore.ventas.filter((venta) => {
+    if (filtroClienteId.value > 0) {
+      return Number(venta.idCliente) === Number(filtroClienteId.value);
+    }
+
+    if (!termino) {
+      return true;
+    }
+
+    return nombreCliente(venta.idCliente).toLowerCase().includes(termino);
+  });
+});
 const totalPaginas = computed(() => Math.max(1, Math.ceil(ventasFiltradas.value.length / pageSize)));
 const ventasPaginadas = computed(() => {
   const start = (page.value - 1) * pageSize;
@@ -595,6 +644,9 @@ const ventasPaginadas = computed(() => {
 const totalCalculado = computed(() => form.value.detalles.reduce((acc, d) => acc + (Number(d.cantidad) || 0) * (Number(d.precioUnitario) || 0), 0));
 const clientesFiltrados = computed(() =>
   clientes.value.filter(c => `${c.nombreCompleto} ${c.nroDocumento || ""}`.toLowerCase().includes(clienteSearch.value.toLowerCase())).slice(0, 8),
+);
+const clientesFiltroBusqueda = computed(() =>
+  clientes.value.filter(c => `${c.nombreCompleto} ${c.nroDocumento || ""}`.toLowerCase().includes(filtroClienteSearch.value.toLowerCase())).slice(0, 8),
 );
 const productosFiltrados = computed(() =>
   productos.value.filter(p => `${p.nombre} ${p.marca || ""}`.toLowerCase().includes(productoSearch.value.toLowerCase())).slice(0, 10),
@@ -662,6 +714,20 @@ const seleccionarCliente = (cliente: Cliente) => {
 const limpiarCliente = () => {
   form.value.idCliente = 0;
   clienteSearch.value = "";
+};
+
+const seleccionarFiltroCliente = (cliente: Cliente) => {
+  filtroClienteId.value = cliente.id;
+  filtroClienteSearch.value = `${cliente.nombreCompleto} - Doc ${cliente.nroDocumento || "-"}`;
+  filtroClienteOpen.value = false;
+  page.value = 1;
+};
+
+const limpiarFiltroCliente = () => {
+  filtroClienteId.value = 0;
+  filtroClienteSearch.value = "";
+  filtroClienteOpen.value = false;
+  page.value = 1;
 };
 
 const seleccionarVendedor = (vendedor: Vendedor) => {
@@ -959,6 +1025,7 @@ const handleClickOutside = (event: MouseEvent) => {
   if (clienteBox.value && !clienteBox.value.contains(target)) clienteOpen.value = false;
   if (vendedorBox.value && !vendedorBox.value.contains(target)) vendedorOpen.value = false;
   if (productoBox.value && !productoBox.value.contains(target)) productoOpen.value = false;
+  if (filtroClienteBox.value && !filtroClienteBox.value.contains(target)) filtroClienteOpen.value = false;
 };
 
 onMounted(async () => {

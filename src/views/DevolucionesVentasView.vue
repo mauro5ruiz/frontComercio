@@ -2,7 +2,7 @@
   <div class="p-6">
     <h1 class="mb-4 text-2xl font-bold">Devoluciones de ventas</h1>
 
-    <div class="mb-4 grid grid-cols-1 gap-3 rounded-xl bg-white p-4 shadow md:grid-cols-3">
+    <div class="mb-4 grid grid-cols-1 gap-3 rounded-xl bg-white p-4 shadow md:grid-cols-2">
       <div>
         <label class="text-sm text-gray-600">Desde</label>
         <input
@@ -22,11 +22,6 @@
           class="w-full rounded-md border px-3 py-2"
           @blur="buscarDevoluciones"
         />
-      </div>
-      <div class="flex items-end">
-        <button @click="buscarDevoluciones" class="w-full rounded bg-slate-700 px-4 py-2 text-white hover:bg-slate-800">
-          Actualizar
-        </button>
       </div>
     </div>
 

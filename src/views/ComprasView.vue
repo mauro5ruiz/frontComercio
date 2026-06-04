@@ -2,7 +2,7 @@
   <div class="p-6">
     <h1 class="text-2xl font-bold mb-4">Compras</h1>
 
-    <div class="bg-white rounded-xl shadow p-4 mb-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+    <div class="bg-white rounded-xl shadow p-4 mb-4 grid grid-cols-1 md:grid-cols-4 gap-3">
       <div>
         <label class="text-sm text-gray-600">Desde</label>
         <input
@@ -22,6 +22,46 @@
           class="w-full border px-3 py-2 rounded-md"
           @blur="buscarCompras"
         />
+      </div>
+      <div ref="filtroProveedorBox" class="relative">
+        <label class="text-sm text-gray-600">Proveedor</label>
+        <div class="relative">
+          <input
+            v-model="filtroProveedorSearch"
+            class="w-full border px-3 py-2 rounded-md pr-8"
+            placeholder="Filtrar por proveedor"
+            @focus="filtroProveedorOpen = true"
+            @input="filtroProveedorId = 0; page = 1"
+          />
+          <button
+            v-if="filtroProveedorId > 0 || filtroProveedorSearch"
+            type="button"
+            class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700 text-sm"
+            @click="limpiarFiltroProveedor"
+          >
+            x
+          </button>
+        </div>
+        <div
+          v-if="filtroProveedorOpen && proveedoresFiltroBusqueda.length"
+          class="absolute z-20 w-full mt-1 bg-white border rounded-md shadow max-h-44 overflow-y-auto"
+        >
+          <button
+            v-for="p in proveedoresFiltroBusqueda"
+            :key="p.id"
+            type="button"
+            class="w-full text-left px-3 py-2 hover:bg-gray-50 text-sm"
+            @click="seleccionarFiltroProveedor(p)"
+          >
+            {{ p.razonSocial }}
+          </button>
+        </div>
+      </div>
+      <div class="flex items-end">
+        <label class="inline-flex w-full items-center gap-2 rounded-md border px-3 py-2 text-sm text-gray-700">
+          <input v-model="soloPendientes" type="checkbox" />
+          Solo con pagos pendientes
+        </label>
       </div>
     </div>
 
@@ -538,10 +578,15 @@ const compraDetalle = ref<Compra | null>(null);
 const compraPagoSeleccionada = ref<Compra | null>(null);
 const proveedorOpen = ref(false);
 const productoOpen = ref(false);
+const filtroProveedorOpen = ref(false);
 const proveedorSearch = ref("");
 const productoSearch = ref("");
+const filtroProveedorSearch = ref("");
 const proveedorBox = ref<HTMLElement | null>(null);
 const productoBox = ref<HTMLElement | null>(null);
+const filtroProveedorBox = ref<HTMLElement | null>(null);
+const filtroProveedorId = ref(0);
+const soloPendientes = ref(false);
 
 const form = ref({
   numeroComprobante: "",
@@ -568,7 +613,32 @@ const pagoCompraImporteInput = ref("");
 const proveedores = computed(() => proveedoresStore.proveedores.filter(p => p.activo));
 const productos = computed(() => productosStore.productos.filter(p => p.activo));
 const formasDePago = computed(() => formasDePagoStore.formasDePago);
-const comprasFiltradas = computed(() => comprasStore.compras);
+const proveedoresFiltradosLista = computed(() => {
+  const termino = filtroProveedorSearch.value.trim().toLowerCase();
+
+  return comprasStore.compras.filter((compra) => {
+    if (soloPendientes.value) {
+      if (Number(compra.saldoPendiente) <= 0) {
+        return false;
+      }
+
+      if (Number(compra.estado) === 2) {
+        return false;
+      }
+    }
+
+    if (filtroProveedorId.value > 0) {
+      return Number(compra.idProveedor) === Number(filtroProveedorId.value);
+    }
+
+    if (!termino) {
+      return true;
+    }
+
+    return nombreProveedor(compra.idProveedor).toLowerCase().includes(termino);
+  });
+});
+const comprasFiltradas = computed(() => proveedoresFiltradosLista.value);
 const totalPaginas = computed(() => Math.max(1, Math.ceil(comprasFiltradas.value.length / pageSize)));
 const comprasPaginadas = computed(() => {
   const start = (page.value - 1) * pageSize;
@@ -576,6 +646,9 @@ const comprasPaginadas = computed(() => {
 });
 const totalCalculado = computed(() => form.value.detalles.reduce((acc, d) => acc + (Number(d.cantidad) || 0) * (Number(d.precioUnitario) || 0), 0));
 const proveedoresFiltrados = computed(() => proveedores.value.filter(p => p.razonSocial.toLowerCase().includes(proveedorSearch.value.toLowerCase())).slice(0, 8));
+const proveedoresFiltroBusqueda = computed(() =>
+  proveedores.value.filter(p => p.razonSocial.toLowerCase().includes(filtroProveedorSearch.value.toLowerCase())).slice(0, 8),
+);
 const productosFiltrados = computed(() => productos.value.filter(p => p.nombre.toLowerCase().includes(productoSearch.value.toLowerCase())).slice(0, 10));
 
 const buscarCompras = async () => {
@@ -646,6 +719,20 @@ const seleccionarProveedor = (proveedor: Proveedor) => {
 const limpiarProveedor = () => {
   form.value.idProveedor = 0;
   proveedorSearch.value = "";
+};
+
+const seleccionarFiltroProveedor = (proveedor: Proveedor) => {
+  filtroProveedorId.value = proveedor.id;
+  filtroProveedorSearch.value = proveedor.razonSocial;
+  filtroProveedorOpen.value = false;
+  page.value = 1;
+};
+
+const limpiarFiltroProveedor = () => {
+  filtroProveedorId.value = 0;
+  filtroProveedorSearch.value = "";
+  filtroProveedorOpen.value = false;
+  page.value = 1;
 };
 
 const seleccionarProducto = (producto: Producto) => {
@@ -866,6 +953,7 @@ const handleClickOutside = (event: MouseEvent) => {
   const target = event.target as Node;
   if (proveedorBox.value && !proveedorBox.value.contains(target)) proveedorOpen.value = false;
   if (productoBox.value && !productoBox.value.contains(target)) productoOpen.value = false;
+  if (filtroProveedorBox.value && !filtroProveedorBox.value.contains(target)) filtroProveedorOpen.value = false;
 };
 
 onMounted(async () => {
