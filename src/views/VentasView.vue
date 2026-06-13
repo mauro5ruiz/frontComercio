@@ -144,11 +144,12 @@
               <input v-model="form.numeroComprobante" class="w-full border px-3 py-2 rounded-md" />
             </div>
             <div ref="clienteBox" class="relative">
-              <label class="text-sm text-gray-700">Cliente *</label>
+              <label class="text-sm text-gray-700">Cliente</label>
               <div class="relative">
-                <input v-model="clienteSearch" class="w-full border px-3 py-2 rounded-md pr-8" placeholder="Buscar cliente" @focus="clienteOpen = true" />
+                <input v-model="clienteSearch" class="w-full border px-3 py-2 rounded-md pr-8" placeholder="Buscar cliente (opcional)" @focus="clienteOpen = true" />
                 <button v-if="form.idCliente > 0 || clienteSearch" type="button" class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700 text-sm" @click="limpiarCliente">x</button>
               </div>
+              <p class="mt-1 text-xs text-gray-500">Si no seleccionas un cliente, la venta se guarda como Consumidor final.</p>
               <div v-if="clienteOpen && clientesFiltrados.length" class="absolute z-20 w-full mt-1 bg-white border rounded-md shadow max-h-44 overflow-y-auto">
                 <button v-for="c in clientesFiltrados" :key="c.id" type="button" class="w-full text-left px-3 py-2 hover:bg-gray-50 text-sm" @click="seleccionarCliente(c)">
                   {{ c.nombreCompleto }} - Doc {{ c.nroDocumento || "-" }}
@@ -343,19 +344,22 @@
 
           <div class="border rounded-lg p-3">
             <div class="flex justify-between items-center mb-2">
-              <h3 class="font-semibold">Pagos iniciales (opcional)</h3>
+              <h3 class="font-semibold">{{ esConsumidorFinal ? "Pagos iniciales (obligatorio)" : "Pagos iniciales (opcional)" }}</h3>
               <div class="flex items-center gap-3">
                 <label class="text-sm flex items-center gap-1">
-                  <input type="checkbox" v-model="pagarTodo" @change="togglePagarTodo" />
+                  <input type="checkbox" v-model="pagarTodo" :disabled="esConsumidorFinal" @change="togglePagarTodo" />
                   Pagar todo
                 </label>
                 <button @click="agregarPago" class="text-blue-600 text-sm" :disabled="pagarTodo">+ Agregar pago</button>
               </div>
             </div>
+            <p v-if="esConsumidorFinal" class="mb-2 text-xs text-amber-700">
+              Para Consumidor final la venta debe quedar pagada en su totalidad.
+            </p>
             <div class="space-y-2">
               <div v-for="(p, idx) in form.pagos" :key="idx" class="grid grid-cols-1 md:grid-cols-4 gap-2">
                 <select v-model.number="p.idFormaPago" class="border px-3 py-2 rounded-md">
-                  <option :value="0">Forma de pago</option>
+                  <option :value="0">-- Seleccione la forma de pago --</option>
                   <option v-for="f in formasDePago" :key="f.id" :value="f.id">{{ f.nombre }}</option>
                 </select>
                 <input
@@ -375,7 +379,13 @@
                   class="border px-3 py-2 rounded-md"
                 />
                 <input v-model="p.referencia" maxlength="120" placeholder="Referencia" class="border px-3 py-2 rounded-md" />
-                <button @click="quitarPago(idx)" class="bg-red-100 text-red-600 rounded-md px-3 py-2">Quitar</button>
+                <button
+                  @click="quitarPago(idx)"
+                  :disabled="esConsumidorFinal"
+                  class="bg-red-100 text-red-600 rounded-md px-3 py-2 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400"
+                >
+                  Quitar
+                </button>
               </div>
             </div>
           </div>
@@ -556,7 +566,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useClientesStore } from "@/modules/clientes/store";
 import type { Cliente } from "@/modules/clientes/types";
 import { useFormasDePagoStore } from "@/modules/formasDePagos/store";
@@ -697,6 +707,7 @@ const productosFiltrados = computed(() =>
 const vendedoresFiltrados = computed(() =>
   vendedores.value.filter(v => `${v.nombre} ${v.apellido}`.toLowerCase().includes(vendedorSearch.value.toLowerCase())).slice(0, 8),
 );
+const esConsumidorFinal = computed(() => Number(form.value.idCliente) <= 0);
 const productoSeleccionado = computed(() => productosStore.productos.find(x => Number(x.id) === Number(nuevoDetalle.value.idProducto)) ?? null);
 const ofertaDisponibleNuevoDetalle = computed(() => obtenerMejorOfertaVigente(nuevoDetalle.value.idProducto, fechaRegistroVenta.value));
 const precioOriginalNuevoDetalle = computed(() => obtenerPrecioBaseProducto(nuevoDetalle.value.idProducto));
@@ -951,6 +962,20 @@ const togglePagarTodo = () => {
   form.value.pagos = [];
 };
 
+watch(
+  [esConsumidorFinal, totalCalculado],
+  ([sinCliente]) => {
+    if (!sinCliente) return;
+    pagarTodo.value = true;
+    form.value.pagos = [{
+      idFormaPago: form.value.pagos[0]?.idFormaPago ?? 0,
+      importe: totalCalculado.value,
+      referencia: "Pago total",
+    }];
+  },
+  { immediate: true },
+);
+
 const bloquearDecimal = (event: KeyboardEvent) => {
   if (event.key === "." || event.key === ",") {
     event.preventDefault();
@@ -959,7 +984,6 @@ const bloquearDecimal = (event: KeyboardEvent) => {
 
 const guardarVenta = async () => {
   if (!form.value.numeroComprobante.trim()) return notification.show("El numero de comprobante es obligatorio", "error");
-  if (form.value.idCliente <= 0) return notification.show("Debe seleccionar un cliente", "error");
   if (form.value.idVendedor <= 0) return notification.show("Debe seleccionar un vendedor", "error");
   if (form.value.idSucursal <= 0) return notification.show("La sucursal es obligatoria", "error");
   if (!form.value.detalles.length) return notification.show("Debe agregar al menos un detalle", "error");
@@ -994,10 +1018,17 @@ const guardarVenta = async () => {
       referencia: p.referencia,
     }));
 
+  if (esConsumidorFinal.value && form.value.pagos.some((p) => p.idFormaPago <= 0)) {
+    return notification.show("Debe seleccionar la forma de pago", "error");
+  }
+
   const total = form.value.detalles.reduce((acc, d) => acc + d.cantidad * d.precioUnitario, 0);
   const totalPagado = pagos.reduce((acc, p) => acc + p.importe, 0);
   if (totalPagado > total) {
     return notification.show("Los pagos no pueden superar el total de la venta", "error");
+  }
+  if (esConsumidorFinal.value && totalPagado !== total) {
+    return notification.show("Para Consumidor final debes registrar el pago total de la venta", "error");
   }
 
   const idVenta = await ventasStore.addVenta({
@@ -1105,6 +1136,7 @@ const estaAnulada = (estado: string | number) => {
 };
 
 const nombreCliente = (idCliente: number) => {
+  if (Number(idCliente) <= 0) return "Consumidor final";
   const cliente = clientesStore.clientes.find(x => x.id === idCliente);
   return cliente?.nombreCompleto || `Cliente #${idCliente}`;
 };
