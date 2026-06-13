@@ -92,6 +92,18 @@
                 </svg>
               </button>
               <button
+                @click="imprimirVenta(v.id)"
+                class="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-md text-slate-600 transition hover:bg-slate-100"
+                title="Imprimir"
+                type="button"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="h-5 w-5" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M6 9V4h12v5" />
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M6 18H4a1 1 0 0 1-1-1v-5a3 3 0 0 1 3-3h12a3 3 0 0 1 3 3v5a1 1 0 0 1-1 1h-2" />
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M6 14h12v6H6z" />
+                </svg>
+              </button>
+              <button
                 @click="verDetalle(v.id)"
                 class="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-md text-blue-500 transition hover:bg-blue-50"
                 title="Ver detalle"
@@ -633,7 +645,10 @@
           <li v-if="!(ventaDetalle.pagos || []).length" class="text-sm text-gray-400">Sin pagos</li>
         </ul>
 
-        <div class="flex justify-end">
+        <div class="flex justify-end gap-2">
+          <button @click="imprimirVenta(ventaDetalle.id)" class="px-4 py-2 rounded bg-slate-700 text-white hover:bg-slate-800">
+            Imprimir
+          </button>
           <button @click="cerrarDetalleModal" class="px-4 py-2 rounded bg-gray-200 hover:bg-gray-300">Cerrar</button>
         </div>
       </div>
@@ -1157,6 +1172,172 @@ const verDetalle = async (id: number) => {
 const cerrarDetalleModal = () => {
   openDetalleModal.value = false;
   ventaDetalle.value = null;
+};
+
+const nombreVendedor = (idVendedor: number) => {
+  const vendedor = vendedoresStore.vendedores.find(x => x.id === idVendedor);
+  return vendedor ? `${vendedor.nombre} ${vendedor.apellido}`.trim() : `Vendedor #${idVendedor}`;
+};
+
+const escapeHtml = (value: string) => value
+  .replaceAll("&", "&amp;")
+  .replaceAll("<", "&lt;")
+  .replaceAll(">", "&gt;")
+  .replaceAll('"', "&quot;")
+  .replaceAll("'", "&#39;");
+
+const generarHtmlImpresionVenta = (venta: Venta) => {
+  const filasDetalles = (venta.detalles || []).length
+    ? (venta.detalles || []).map((detalle, index) => `
+        <tr>
+          <td>${index + 1}</td>
+          <td>${escapeHtml(nombreProducto(detalle.idProducto))}</td>
+          <td>${escapeHtml(marcaProducto(detalle.idProducto))}</td>
+          <td class="right">${detalle.cantidad}</td>
+          <td class="right">${money(detalle.precioUnitario)}</td>
+          <td class="right">${money(detalle.subtotal || detalle.cantidad * detalle.precioUnitario)}</td>
+        </tr>
+      `).join("")
+    : `<tr><td colspan="6" class="muted center">Sin productos registrados</td></tr>`;
+
+  const filasPagos = (venta.pagos || []).length
+    ? (venta.pagos || []).map((pago) => `
+        <tr>
+          <td>${escapeHtml(nombreFormaPago(pago.idFormaPago))}</td>
+          <td class="right">${money(pago.importe)}</td>
+          <td>${escapeHtml(pago.referencia || "-")}</td>
+        </tr>
+      `).join("")
+    : `<tr><td colspan="3" class="muted center">Sin pagos registrados</td></tr>`;
+
+  return `<!doctype html>
+  <html lang="es">
+    <head>
+      <meta charset="UTF-8" />
+      <title>Imprimir venta ${escapeHtml(venta.numeroComprobante)}</title>
+      <style>
+        :root { color-scheme: light; }
+        * { box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; margin: 0; color: #0f172a; background: #fff; }
+        .page { width: 210mm; min-height: 297mm; padding: 16mm; margin: 0 auto; }
+        .header { display: flex; justify-content: space-between; gap: 16px; align-items: start; margin-bottom: 18px; }
+        .title { font-size: 28px; font-weight: 700; margin: 0 0 6px; }
+        .subtitle { margin: 0; color: #475569; font-size: 13px; }
+        .badge { display: inline-block; padding: 6px 10px; border: 1px solid #cbd5e1; border-radius: 999px; font-size: 12px; }
+        .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-bottom: 18px; }
+        .card { border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px; }
+        .label { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: #64748b; margin-bottom: 6px; }
+        .value { font-size: 14px; font-weight: 600; }
+        .section-title { font-size: 15px; font-weight: 700; margin: 20px 0 10px; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { border-bottom: 1px solid #e2e8f0; padding: 9px 8px; font-size: 12px; text-align: left; vertical-align: top; }
+        th { background: #f8fafc; text-transform: uppercase; letter-spacing: .04em; font-size: 11px; color: #475569; }
+        .right { text-align: right; }
+        .center { text-align: center; }
+        .muted { color: #64748b; }
+        .totals { margin-top: 16px; margin-left: auto; width: 320px; }
+        .totals td { border-bottom: 0; padding: 6px 0; font-size: 13px; }
+        .totals .strong td { font-size: 16px; font-weight: 700; border-top: 1px solid #cbd5e1; padding-top: 10px; }
+        .notes { margin-top: 20px; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px; font-size: 12px; min-height: 72px; }
+        @media print {
+          body { margin: 0; }
+          .page { width: auto; min-height: auto; padding: 10mm 12mm; }
+        }
+      </style>
+    </head>
+    <body>
+      <div class="page">
+        <div class="header">
+          <div>
+            <h1 class="title">Venta</h1>
+            <p class="subtitle">Documento generado desde SoftStock</p>
+          </div>
+          <div class="badge">${escapeHtml(estaAnulada(venta.estado) ? "Anulada" : "Activa")}</div>
+        </div>
+
+        <div class="grid">
+          <div class="card">
+            <div class="label">Comprobante</div>
+            <div class="value">${escapeHtml(venta.numeroComprobante)}</div>
+          </div>
+          <div class="card">
+            <div class="label">Fecha</div>
+            <div class="value">${escapeHtml(formatDate(venta.fecha))}</div>
+          </div>
+          <div class="card">
+            <div class="label">Cliente</div>
+            <div class="value">${escapeHtml(nombreCliente(venta.idCliente))}</div>
+          </div>
+          <div class="card">
+            <div class="label">Vendedor</div>
+            <div class="value">${escapeHtml(nombreVendedor(venta.idVendedor))}</div>
+          </div>
+        </div>
+
+        <div class="section-title">Productos</div>
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Producto</th>
+              <th>Marca</th>
+              <th class="right">Cant.</th>
+              <th class="right">P. Unitario</th>
+              <th class="right">Subtotal</th>
+            </tr>
+          </thead>
+          <tbody>${filasDetalles}</tbody>
+        </table>
+
+        <div class="section-title">Pagos</div>
+        <table>
+          <thead>
+            <tr>
+              <th>Forma de pago</th>
+              <th class="right">Importe</th>
+              <th>Referencia</th>
+            </tr>
+          </thead>
+          <tbody>${filasPagos}</tbody>
+        </table>
+
+        <table class="totals">
+          <tbody>
+            <tr><td>Total venta</td><td class="right">${money(venta.total)}</td></tr>
+            <tr><td>Total pagado</td><td class="right">${money(venta.totalPagado)}</td></tr>
+            <tr class="strong"><td>Saldo pendiente</td><td class="right">${money(venta.saldoPendiente)}</td></tr>
+          </tbody>
+        </table>
+
+        <div class="notes">
+          <div class="label">Observaciones</div>
+          <div>${escapeHtml(venta.observaciones?.trim() || "-")}</div>
+        </div>
+      </div>
+    </body>
+  </html>`;
+};
+
+const imprimirVenta = async (idVenta: number) => {
+  const venta = ventaDetalle.value?.id === idVenta
+    ? ventaDetalle.value
+    : await ventasStore.fetchVentaPorId(idVenta);
+
+  if (!venta) return;
+
+  const printWindow = window.open("", "_blank", "width=900,height=700");
+  if (!printWindow) {
+    notification.show("No se pudo abrir la ventana de impresion. Revisa si el navegador bloqueo el popup.", "error");
+    return;
+  }
+
+  printWindow.document.open();
+  printWindow.document.write(generarHtmlImpresionVenta(venta));
+  printWindow.document.close();
+  printWindow.focus();
+  printWindow.onload = () => {
+    printWindow.print();
+  };
 };
 
 const abrirConfirmacionAnulacion = (venta: Venta) => {
