@@ -28,11 +28,33 @@
       </label>
     </div>
 
-    <input
-      v-model="search"
-      placeholder="Buscar producto..."
-      class="w-full border px-3 py-2 rounded mb-4"
-    />
+    <div class="grid grid-cols-1 gap-3 mb-4 md:grid-cols-3">
+      <input
+        v-model="search"
+        placeholder="Buscar producto..."
+        class="w-full border px-3 py-2 rounded"
+      />
+
+      <select
+        v-model.number="filtroCategoria"
+        class="w-full border px-3 py-2 rounded bg-white"
+      >
+        <option :value="0">Todas las categorias</option>
+        <option v-for="c in categorias" :key="c.id" :value="c.id">
+          {{ c.nombre }}
+        </option>
+      </select>
+
+      <select
+        v-model.number="filtroMarca"
+        class="w-full border px-3 py-2 rounded bg-white"
+      >
+        <option :value="0">Todas las marcas</option>
+        <option v-for="m in marcas" :key="m.id" :value="m.id">
+          {{ m.nombre }}
+        </option>
+      </select>
+    </div>
 
     <table class="w-full bg-white rounded shadow">
       <thead>
@@ -528,6 +550,8 @@ const productos = computed<Producto[]>(() =>
 );
 
 const search = ref("");
+const filtroCategoria = ref(0);
+const filtroMarca = ref(0);
 const incluirEliminados = ref(false);
 const soloBajoStock = ref(false);
 
@@ -617,6 +641,10 @@ watch(search, () => {
   page.value = 1;
 });
 
+watch([filtroCategoria, filtroMarca], () => {
+  page.value = 1;
+});
+
 watch(incluirEliminados, async () => {
   page.value = 1;
   await cargarProductos();
@@ -629,17 +657,21 @@ watch(soloBajoStock, () => {
 const productosFiltrados = computed(() => {
   return productos.value.filter((p) => {
     const texto = search.value.toLowerCase();
+    const categoriaId = Number((p as any).idCategoria ?? 0);
+    const marcaId = Number((p as any).idMarca ?? 0);
 
     const coincideBusqueda =
       p.nombre.toLowerCase().includes(texto) ||
-      p.categoria.toLowerCase().includes(texto) ||
-      p.marca.toLowerCase().includes(texto) ||
+      nombreCategoria(p).toLowerCase().includes(texto) ||
+      nombreMarca(p).toLowerCase().includes(texto) ||
       (p.codigo ?? "").toLowerCase().includes(texto);
 
+    const coincideCategoria = !filtroCategoria.value || categoriaId === filtroCategoria.value;
+    const coincideMarca = !filtroMarca.value || marcaId === filtroMarca.value;
     const incluir = incluirEliminados.value ? true : p.activo;
     const coincideBajoStock = !soloBajoStock.value || p.stockActual <= p.stockMinimo;
 
-    return coincideBusqueda && incluir && coincideBajoStock;
+    return coincideBusqueda && coincideCategoria && coincideMarca && incluir && coincideBajoStock;
   });
 });
 

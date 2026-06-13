@@ -209,6 +209,23 @@
                     <div class="mt-1">
                       Precio venta actual: <span class="font-semibold">{{ precioVentaProducto(productoSeleccionado.id) }}</span>
                     </div>
+                    <div v-if="ofertaDisponibleNuevoDetalle && precioOfertaNuevoDetalle !== null" class="mt-2 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-emerald-800">
+                      <div>
+                        Oferta vigente al registrar la venta:
+                        <span class="font-semibold">{{ descripcionOferta(ofertaDisponibleNuevoDetalle) }}</span>
+                      </div>
+                      <div class="mt-1">
+                        Precio oferta: <span class="font-semibold">{{ money(precioOfertaNuevoDetalle) }}</span>
+                      </div>
+                      <label class="mt-2 inline-flex items-center gap-2 text-sm">
+                        <input
+                          v-model="usarPrecioOriginalNuevoDetalle"
+                          type="checkbox"
+                          @change="togglePrecioOriginalNuevoDetalle"
+                        />
+                        Vender al precio original
+                      </label>
+                    </div>
                   </div>
                   <div v-if="productoOpen && productosFiltrados.length" class="absolute z-20 w-full mt-1 bg-white border rounded-md shadow max-h-52 overflow-y-auto">
                     <button v-for="prod in productosFiltrados" :key="prod.id" type="button" class="w-full text-left px-3 py-2 hover:bg-gray-50 text-sm" @click="seleccionarProducto(prod)">
@@ -277,6 +294,17 @@
                       <div>{{ nombreProducto(d.idProducto) }}</div>
                       <div class="text-xs text-gray-500">Marca: {{ marcaProducto(d.idProducto) }}</div>
                       <div class="text-xs text-gray-500">Stock actual: {{ stockProducto(d.idProducto) }}</div>
+                      <div v-if="d.tieneOferta && d.precioOferta !== null" class="mt-2 text-xs text-emerald-700">
+                        <div>Precio oferta: {{ money(d.precioOferta) }}</div>
+                        <label class="mt-1 inline-flex items-center gap-2 text-gray-700">
+                          <input
+                            v-model="d.usarPrecioOriginal"
+                            type="checkbox"
+                            @change="togglePrecioOriginalDetalle(idx)"
+                          />
+                          Vender al precio original
+                        </label>
+                      </div>
                     </td>
                     <td class="px-3 py-2 text-right">
                       <input
@@ -533,6 +561,8 @@ import { useClientesStore } from "@/modules/clientes/store";
 import type { Cliente } from "@/modules/clientes/types";
 import { useFormasDePagoStore } from "@/modules/formasDePagos/store";
 import { useMarcasStore } from "@/modules/marcas/store";
+import { obtenerOfertas } from "@/modules/ofertas/services";
+import { TipoDescuento, type Oferta } from "@/modules/ofertas/types";
 import { useProductosStore } from "@/modules/productos/store";
 import type { Producto } from "@/modules/productos/types";
 import { useVendedoresStore } from "@/modules/vendedores/store";
@@ -540,6 +570,16 @@ import type { Vendedor } from "@/modules/vendedores/types";
 import { useVentasStore } from "@/modules/ventas/store";
 import type { Venta } from "@/modules/ventas/types";
 import { useNotificationStore } from "@/stores/notificaciones";
+
+interface DetalleVentaEditable {
+  idProducto: number;
+  cantidad: number;
+  precioUnitario: number;
+  precioOriginal: number;
+  precioOferta: number | null;
+  tieneOferta: boolean;
+  usarPrecioOriginal: boolean;
+}
 
 const notification = useNotificationStore();
 const ventasStore = useVentasStore();
@@ -591,6 +631,8 @@ const productoSearch = ref("");
 const vendedorSearch = ref("");
 const filtroClienteSearch = ref("");
 const filtroClienteId = ref(0);
+const ofertas = ref<Oferta[]>([]);
+const fechaRegistroVenta = ref(new Date());
 
 const form = ref({
   numeroComprobante: "",
@@ -598,7 +640,7 @@ const form = ref({
   idVendedor: 0,
   idSucursal: 1,
   observaciones: "",
-  detalles: [] as Array<{ idProducto: number; cantidad: number; precioUnitario: number }>,
+  detalles: [] as DetalleVentaEditable[],
   pagos: [] as Array<{ idFormaPago: number; importe: number; referencia?: string }>,
 });
 
@@ -608,6 +650,7 @@ const nuevoDetalle = ref({
   precioUnitario: 0,
 });
 const nuevoDetallePrecioInput = ref("");
+const usarPrecioOriginalNuevoDetalle = ref(false);
 const cobroVentaForm = ref({
   idFormaPago: 0,
   importe: 0,
@@ -655,6 +698,12 @@ const vendedoresFiltrados = computed(() =>
   vendedores.value.filter(v => `${v.nombre} ${v.apellido}`.toLowerCase().includes(vendedorSearch.value.toLowerCase())).slice(0, 8),
 );
 const productoSeleccionado = computed(() => productosStore.productos.find(x => Number(x.id) === Number(nuevoDetalle.value.idProducto)) ?? null);
+const ofertaDisponibleNuevoDetalle = computed(() => obtenerMejorOfertaVigente(nuevoDetalle.value.idProducto, fechaRegistroVenta.value));
+const precioOriginalNuevoDetalle = computed(() => obtenerPrecioBaseProducto(nuevoDetalle.value.idProducto));
+const precioOfertaNuevoDetalle = computed(() => {
+  if (!ofertaDisponibleNuevoDetalle.value) return null;
+  return calcularPrecioFinalOferta(ofertaDisponibleNuevoDetalle.value);
+});
 
 const buscarVentas = async () => {
   if (!desde.value || !hasta.value) {
@@ -680,6 +729,7 @@ const buscarVentas = async () => {
 };
 
 const abrirCrear = () => {
+  fechaRegistroVenta.value = new Date();
   form.value = {
     numeroComprobante: "",
     idCliente: 0,
@@ -691,6 +741,7 @@ const abrirCrear = () => {
   };
   nuevoDetalle.value = { idProducto: 0, cantidad: 1, precioUnitario: 0 };
   nuevoDetallePrecioInput.value = "";
+  usarPrecioOriginalNuevoDetalle.value = false;
   pagarTodo.value = false;
   clienteSearch.value = "";
   productoSearch.value = "";
@@ -741,10 +792,76 @@ const limpiarVendedor = () => {
   vendedorSearch.value = "";
 };
 
+const obtenerPrecioBaseProducto = (idProducto: number) => {
+  const producto = productosStore.productos.find(x => Number(x.id) === Number(idProducto)) as (Producto & { precio?: number }) | undefined;
+  return Math.max(0, Math.round(producto?.precioVenta ?? producto?.precio ?? 0));
+};
+
+const parseLocalDateTime = (value: string) => parseApiDate(value);
+
+const estaOfertaVigenteParaFecha = (oferta: Oferta, fecha: Date) => {
+  if (!oferta.activa) return false;
+
+  const fechaInicio = parseLocalDateTime(oferta.fechaInicio);
+  const fechaFin = parseLocalDateTime(oferta.fechaFin);
+
+  if (Number.isNaN(fechaInicio.getTime()) || Number.isNaN(fechaFin.getTime())) return false;
+
+  const referencia = fecha.getTime();
+  return fechaInicio.getTime() <= referencia && referencia <= fechaFin.getTime();
+};
+
+const calcularPrecioFinalOferta = (oferta: Oferta) => {
+  const precioBase = obtenerPrecioBaseProducto(oferta.idProducto);
+
+  if (oferta.tipoDescuento === TipoDescuento.Porcentaje) {
+    return Math.max(0, Math.round(precioBase - (precioBase * oferta.valorDescuento) / 100));
+  }
+
+  if (oferta.tipoDescuento === TipoDescuento.Fijo) {
+    return Math.max(0, Math.round(precioBase - oferta.valorDescuento));
+  }
+
+  return Math.max(0, Math.round(oferta.valorDescuento));
+};
+
+const obtenerMejorOfertaVigente = (idProducto: number, fecha: Date) => {
+  if (idProducto <= 0) return null;
+
+  const candidatas = ofertas.value.filter((oferta) =>
+    Number(oferta.idProducto) === Number(idProducto) && estaOfertaVigenteParaFecha(oferta, fecha),
+  );
+
+  if (!candidatas.length) return null;
+
+  return candidatas.reduce((mejor, actual) =>
+    calcularPrecioFinalOferta(actual) < calcularPrecioFinalOferta(mejor) ? actual : mejor,
+  );
+};
+
+const actualizarPrecioNuevoDetalleSegunPreferencia = () => {
+  const precioOriginal = precioOriginalNuevoDetalle.value;
+  const precioOferta = precioOfertaNuevoDetalle.value;
+
+  if (nuevoDetalle.value.idProducto <= 0) {
+    nuevoDetalle.value.precioUnitario = 0;
+    nuevoDetallePrecioInput.value = "";
+    return;
+  }
+
+  const precioFinal = usarPrecioOriginalNuevoDetalle.value || precioOferta == null ? precioOriginal : precioOferta;
+  nuevoDetalle.value.precioUnitario = Math.max(0, precioFinal);
+  nuevoDetallePrecioInput.value = precioFinal > 0 ? formatoMiles(precioFinal) : "";
+};
+
+const togglePrecioOriginalNuevoDetalle = () => {
+  actualizarPrecioNuevoDetalleSegunPreferencia();
+};
+
 const seleccionarProducto = (producto: Producto) => {
   nuevoDetalle.value.idProducto = producto.id;
-  nuevoDetalle.value.precioUnitario = Math.max(1, Math.round(producto.precioVenta || 0));
-  nuevoDetallePrecioInput.value = formatoMiles(nuevoDetalle.value.precioUnitario);
+  usarPrecioOriginalNuevoDetalle.value = false;
+  actualizarPrecioNuevoDetalleSegunPreferencia();
   productoSearch.value = producto.nombre;
   productoOpen.value = false;
 };
@@ -754,6 +871,7 @@ const limpiarProducto = () => {
   nuevoDetalle.value.precioUnitario = 0;
   nuevoDetallePrecioInput.value = "";
   productoSearch.value = "";
+  usarPrecioOriginalNuevoDetalle.value = false;
 };
 
 const actualizarNuevoDetallePrecio = (event: Event) => {
@@ -781,10 +899,19 @@ const agregarDetalle = () => {
   if (precioUnitario <= 0 || !Number.isInteger(precioUnitario)) return notification.show("El precio unitario debe ser un numero entero mayor a 0", "error");
   if (form.value.detalles.some(d => d.idProducto === idProducto)) return notification.show("Ese producto ya esta agregado en la tabla", "error");
 
-  form.value.detalles.push({ idProducto, cantidad, precioUnitario });
+  form.value.detalles.push({
+    idProducto,
+    cantidad,
+    precioUnitario,
+    precioOriginal: precioOriginalNuevoDetalle.value,
+    precioOferta: precioOfertaNuevoDetalle.value,
+    tieneOferta: precioOfertaNuevoDetalle.value != null,
+    usarPrecioOriginal: usarPrecioOriginalNuevoDetalle.value,
+  });
   nuevoDetalle.value = { idProducto: 0, cantidad: 1, precioUnitario: 0 };
   nuevoDetallePrecioInput.value = "";
   productoSearch.value = "";
+  usarPrecioOriginalNuevoDetalle.value = false;
 };
 
 const quitarDetalle = (idx: number) => form.value.detalles.splice(idx, 1);
@@ -802,6 +929,15 @@ const normalizarDetalle = (idx: number) => {
     item.precioUnitario = Math.max(1, Math.round(item.precioUnitario || 0));
     notification.show("El precio unitario debe ser un numero entero mayor a 0", "error");
   }
+};
+
+const togglePrecioOriginalDetalle = (idx: number) => {
+  const item = form.value.detalles[idx];
+  if (!item || !item.tieneOferta) return;
+
+  item.precioUnitario = item.usarPrecioOriginal
+    ? item.precioOriginal
+    : Math.max(1, Math.round(item.precioOferta ?? item.precioOriginal));
 };
 
 const agregarPago = () => form.value.pagos.push({ idFormaPago: 0, importe: 0, referencia: "" });
@@ -1010,6 +1146,21 @@ const precioVentaProducto = (idProducto: number) => {
   return money(producto?.precioVenta ?? producto?.precio ?? 0);
 };
 
+const descripcionOferta = (oferta: Oferta | null) => {
+  if (!oferta) return "";
+  if (oferta.tipoDescuento === TipoDescuento.Porcentaje) return `${oferta.valorDescuento}%`;
+  return money(oferta.valorDescuento);
+};
+
+const cargarOfertas = async () => {
+  try {
+    ofertas.value = await obtenerOfertas(true);
+  } catch (err: any) {
+    ofertas.value = [];
+    notification.show(err.response?.data?.error || "No se pudieron cargar las ofertas", "error");
+  }
+};
+
 const money = (value: number) =>
   new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", minimumFractionDigits: 2 }).format(value || 0);
 
@@ -1034,6 +1185,7 @@ onMounted(async () => {
     clientesStore.fetchClientes(),
     vendedoresStore.fetchVendedores(),
     marcasStore.fetchMarcas(),
+    cargarOfertas(),
     productosStore.fetchProductos(),
     formasDePagoStore.fetchFormasDePago(),
     buscarVentas(),
