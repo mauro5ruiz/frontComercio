@@ -1,7 +1,7 @@
 import { defineStore } from "pinia";
 import { ref } from "vue";
 import { useNotificationStore } from "@/stores/notificaciones";
-import type { CobrarClienteDTO, CrearVentaDTO, Venta } from "./types";
+import type { AnularVentaDTO, CobrarClienteDTO, CrearVentaDTO, Venta } from "./types";
 import {
   anularVenta,
   cobrarCliente,
@@ -67,10 +67,10 @@ export const useVentasStore = defineStore("ventas", () => {
     }
   };
 
-  const cancelarVenta = async (id: number) => {
+  const cancelarVenta = async (id: number, dto?: AnularVentaDTO) => {
     try {
       error.value = null;
-      const resp = await anularVenta(id);
+      const resp = await anularVenta(id, dto);
       notification.show(resp.mensaje || "Venta anulada correctamente", "success");
       return true;
     } catch (err: any) {

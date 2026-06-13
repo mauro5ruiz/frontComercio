@@ -51,3 +51,13 @@ export interface CobrarClienteDTO {
   idFormaPago: number;
   referencia: string;
 }
+
+export interface AnularVentaPagoDTO {
+  idFormaPago: number;
+  importe: number;
+  referencia?: string;
+}
+
+export interface AnularVentaDTO {
+  pagos?: AnularVentaPagoDTO[];
+}

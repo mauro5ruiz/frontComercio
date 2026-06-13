@@ -104,7 +104,7 @@
               </button>
               <button
                 v-if="!estaAnulada(v.estado)"
-                @click="abrirConfirmacionAnulacion(v.id)"
+                @click="abrirConfirmacionAnulacion(v)"
                 class="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-md text-red-500 transition hover:bg-red-50"
                 title="Anular venta"
                 type="button"
@@ -511,19 +511,95 @@
     </div>
 
     <div
-      v-if="openAnularModal"
+      v-if="openAnularModal && ventaAnulacionSeleccionada"
       @click.self="cerrarConfirmacionAnulacion"
       class="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-50"
     >
-      <div class="bg-white rounded-lg shadow-lg w-full max-w-sm p-6">
-        <h2 class="text-lg font-bold mb-3 text-gray-800">Confirmar anulacion</h2>
+      <div class="bg-white rounded-xl shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+        <div class="px-6 py-4 border-b bg-gray-50 rounded-t-xl">
+          <h2 class="text-lg font-bold text-gray-800">Anular venta completa</h2>
+          <p class="text-sm text-gray-500 mt-1">
+            {{ ventaAnulacionSeleccionada.numeroComprobante }} - {{ nombreCliente(ventaAnulacionSeleccionada.idCliente) }}
+          </p>
+        </div>
 
-        <p class="text-sm text-gray-600 mb-4">Estas seguro de que queres anular esta venta?</p>
+        <div class="p-6 space-y-5">
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div class="rounded-lg border bg-slate-50 px-4 py-3">
+              <div class="text-xs uppercase tracking-wide text-slate-500">Total venta</div>
+              <div class="mt-1 text-2xl font-semibold text-slate-900">{{ money(ventaAnulacionSeleccionada.total) }}</div>
+            </div>
+            <div class="rounded-lg border bg-slate-50 px-4 py-3">
+              <div class="text-xs uppercase tracking-wide text-slate-500">Total cobrado</div>
+              <div class="mt-1 text-2xl font-semibold text-slate-900">{{ money(ventaAnulacionSeleccionada.totalPagado) }}</div>
+            </div>
+            <div class="rounded-lg border bg-slate-50 px-4 py-3">
+              <div class="text-xs uppercase tracking-wide text-slate-500">Saldo pendiente</div>
+              <div class="mt-1 text-2xl font-semibold text-slate-900">{{ money(ventaAnulacionSeleccionada.saldoPendiente) }}</div>
+            </div>
+          </div>
 
-        <div class="flex justify-end gap-2">
+          <div v-if="totalPagadoAnulacion > 0" class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            Esta venta tiene {{ money(totalPagadoAnulacion) }} cobrados. Solo podes registrar devoluciones directas hasta ese importe.
+          </div>
+          <div v-else class="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
+            Esta venta no registra pagos. Por eso no hay devolucion directa para cargar.
+          </div>
+
+          <div v-if="totalPagadoAnulacion > 0" class="rounded-lg border p-3">
+            <div class="mb-2 flex items-center justify-between">
+              <h3 class="font-semibold">Pagos de anulacion (opcional)</h3>
+              <div class="flex items-center gap-3">
+                <label class="flex items-center gap-1 text-sm">
+                  <input type="checkbox" v-model="anularPagarTodo" @change="toggleAnularPagarTodo" />
+                  Devolver todo lo cobrado
+                </label>
+                <button @click="agregarPagoAnulacion" class="text-sm text-blue-600" :disabled="anularPagarTodo">+ Agregar pago</button>
+              </div>
+            </div>
+            <div class="space-y-2">
+              <div v-for="(p, idx) in anularVentaForm.pagos" :key="idx" class="grid grid-cols-1 gap-2 md:grid-cols-4">
+                <select v-model.number="p.idFormaPago" class="rounded-md border px-3 py-2">
+                  <option :value="0">Forma de pago</option>
+                  <option v-for="f in formasDePago" :key="f.id" :value="f.id">{{ f.nombre }}</option>
+                </select>
+                <input
+                  v-if="anularPagarTodo"
+                  :value="money(p.importe)"
+                  type="text"
+                  readonly
+                  class="rounded-md border bg-gray-50 px-3 py-2"
+                />
+                <input
+                  v-else
+                  v-model.number="p.importe"
+                  type="number"
+                  min="1"
+                  step="1"
+                  placeholder="Importe"
+                  class="rounded-md border px-3 py-2"
+                />
+                <input v-model="p.referencia" maxlength="120" placeholder="Referencia" class="rounded-md border px-3 py-2" />
+                <button @click="quitarPagoAnulacion(idx)" class="rounded-md bg-red-100 px-3 py-2 text-red-600">Quitar</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="text-right font-semibold">
+            {{ totalPagadoAnulacion > 0 ? `Total pagado: ${money(totalPagadoAnulacion)}` : `Total venta: ${money(totalAnulacionVenta)}` }}
+          </div>
+        </div>
+
+        <div class="px-6 py-4 border-t bg-gray-50 rounded-b-xl flex justify-end gap-2">
           <button @click="cerrarConfirmacionAnulacion" class="px-4 py-2 rounded bg-gray-200 hover:bg-gray-300">Cancelar</button>
 
-          <button @click="confirmarAnulacion" class="px-4 py-2 rounded bg-red-500 text-white hover:bg-red-600">Anular</button>
+          <button
+            @click="confirmarAnulacion"
+            class="px-4 py-2 rounded bg-red-500 text-white hover:bg-red-600 disabled:cursor-not-allowed disabled:bg-red-300"
+            :disabled="anulandoVenta"
+          >
+            {{ anulandoVenta ? "Anulando..." : "Anular venta" }}
+          </button>
         </div>
       </div>
     </div>
@@ -578,7 +654,7 @@ import type { Producto } from "@/modules/productos/types";
 import { useVendedoresStore } from "@/modules/vendedores/store";
 import type { Vendedor } from "@/modules/vendedores/types";
 import { useVentasStore } from "@/modules/ventas/store";
-import type { Venta } from "@/modules/ventas/types";
+import type { AnularVentaPagoDTO, Venta } from "@/modules/ventas/types";
 import { useNotificationStore } from "@/stores/notificaciones";
 
 interface DetalleVentaEditable {
@@ -590,6 +666,12 @@ interface DetalleVentaEditable {
   tieneOferta: boolean;
   usarPrecioOriginal: boolean;
 }
+
+type PagoForm = {
+  idFormaPago: number;
+  importe: number;
+  referencia: string;
+};
 
 const notification = useNotificationStore();
 const ventasStore = useVentasStore();
@@ -626,7 +708,9 @@ const openAnularModal = ref(false);
 const openDetalleModal = ref(false);
 const ventaDetalle = ref<Venta | null>(null);
 const ventaCobroSeleccionada = ref<Venta | null>(null);
+const ventaAnulacionSeleccionada = ref<Venta | null>(null);
 const ventaAAnular = ref<number | null>(null);
+const anulandoVenta = ref(false);
 const clienteOpen = ref(false);
 const productoOpen = ref(false);
 const vendedorOpen = ref(false);
@@ -667,6 +751,10 @@ const cobroVentaForm = ref({
   referencia: "",
 });
 const cobroVentaImporteInput = ref("");
+const anularPagarTodo = ref(false);
+const anularVentaForm = ref({
+  pagos: [] as PagoForm[],
+});
 
 const pagarTodo = ref(false);
 
@@ -695,6 +783,8 @@ const ventasPaginadas = computed(() => {
   return ventasFiltradas.value.slice(start, start + pageSize);
 });
 const totalCalculado = computed(() => form.value.detalles.reduce((acc, d) => acc + (Number(d.cantidad) || 0) * (Number(d.precioUnitario) || 0), 0));
+const totalAnulacionVenta = computed(() => Number(ventaAnulacionSeleccionada.value?.total) || 0);
+const totalPagadoAnulacion = computed(() => Number(ventaAnulacionSeleccionada.value?.totalPagado) || 0);
 const clientesFiltrados = computed(() =>
   clientes.value.filter(c => `${c.nombreCompleto} ${c.nroDocumento || ""}`.toLowerCase().includes(clienteSearch.value.toLowerCase())).slice(0, 8),
 );
@@ -953,6 +1043,8 @@ const togglePrecioOriginalDetalle = (idx: number) => {
 
 const agregarPago = () => form.value.pagos.push({ idFormaPago: 0, importe: 0, referencia: "" });
 const quitarPago = (idx: number) => form.value.pagos.splice(idx, 1);
+const agregarPagoAnulacion = () => anularVentaForm.value.pagos.push({ idFormaPago: 0, importe: 0, referencia: "" });
+const quitarPagoAnulacion = (idx: number) => anularVentaForm.value.pagos.splice(idx, 1);
 
 const togglePagarTodo = () => {
   if (pagarTodo.value) {
@@ -960,6 +1052,15 @@ const togglePagarTodo = () => {
     return;
   }
   form.value.pagos = [];
+};
+
+const toggleAnularPagarTodo = () => {
+  if (anularPagarTodo.value) {
+    anularVentaForm.value.pagos = [{ idFormaPago: 0, importe: totalPagadoAnulacion.value, referencia: "Pago total" }];
+    return;
+  }
+
+  anularVentaForm.value.pagos = [];
 };
 
 watch(
@@ -1058,20 +1159,58 @@ const cerrarDetalleModal = () => {
   ventaDetalle.value = null;
 };
 
-const abrirConfirmacionAnulacion = (id: number) => {
-  ventaAAnular.value = id;
+const abrirConfirmacionAnulacion = (venta: Venta) => {
+  ventaAAnular.value = venta.id;
+  ventaAnulacionSeleccionada.value = venta;
+  anularPagarTodo.value = false;
+  anularVentaForm.value = { pagos: [] };
   openAnularModal.value = true;
 };
 
 const cerrarConfirmacionAnulacion = () => {
   ventaAAnular.value = null;
+  ventaAnulacionSeleccionada.value = null;
+  anularPagarTodo.value = false;
+  anularVentaForm.value = { pagos: [] };
+  anulandoVenta.value = false;
   openAnularModal.value = false;
 };
 
 const confirmarAnulacion = async () => {
-  if (!ventaAAnular.value) return;
+  if (!ventaAAnular.value || !ventaAnulacionSeleccionada.value) return;
 
-  const ok = await ventasStore.cancelarVenta(ventaAAnular.value);
+  if (anularPagarTodo.value && anularVentaForm.value.pagos.length) {
+    const primerPago = anularVentaForm.value.pagos[0];
+    if (primerPago) {
+      primerPago.importe = totalPagadoAnulacion.value;
+    }
+  }
+
+  const pagoSinForma = anularVentaForm.value.pagos.some((pago) => pago.importe > 0 && pago.idFormaPago <= 0);
+  if (pagoSinForma) {
+    notification.show("Todos los pagos con importe deben tener forma de pago seleccionada", "error");
+    return;
+  }
+
+  const pagosValidos: AnularVentaPagoDTO[] = anularVentaForm.value.pagos
+    .filter((pago) => pago.idFormaPago > 0 && pago.importe > 0)
+    .map((pago) => ({
+      idFormaPago: pago.idFormaPago,
+      importe: pago.importe,
+      referencia: pago.referencia?.trim() || undefined,
+    }));
+
+  const totalPagado = pagosValidos.reduce((acc, pago) => acc + pago.importe, 0);
+  if (totalPagado > totalPagadoAnulacion.value) {
+    notification.show("Los pagos no pueden superar el total pagado de la venta", "error");
+    return;
+  }
+
+  anulandoVenta.value = true;
+  const ok = await ventasStore.cancelarVenta(ventaAAnular.value, {
+    pagos: pagosValidos.length ? pagosValidos : undefined,
+  });
+  anulandoVenta.value = false;
   if (!ok) return;
   await Promise.all([buscarVentas(), productosStore.fetchProductos()]);
   cerrarConfirmacionAnulacion();

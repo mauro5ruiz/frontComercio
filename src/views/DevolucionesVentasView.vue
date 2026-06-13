@@ -179,13 +179,20 @@
             </div>
           </div>
 
-          <div class="rounded-lg border p-3">
+          <div v-if="totalPagadoVentaSeleccionada > 0" class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            Esta venta tiene {{ money(totalPagadoVentaSeleccionada) }} cobrados. Solo podes registrar devoluciones directas hasta ese importe.
+          </div>
+          <div v-else-if="form.idVenta > 0" class="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
+            Esta venta no registra pagos. Por eso no hay devolucion directa para cargar.
+          </div>
+
+          <div v-if="totalPagadoVentaSeleccionada > 0" class="rounded-lg border p-3">
             <div class="mb-2 flex items-center justify-between">
               <h3 class="font-semibold">Pagos de devolucion (opcional)</h3>
               <div class="flex items-center gap-3">
                 <label class="flex items-center gap-1 text-sm">
                   <input type="checkbox" v-model="pagarTodo" @change="togglePagarTodo" />
-                  Pagar todo
+                  Pagar maximo posible
                 </label>
                 <button @click="agregarPago" class="text-sm text-blue-600" :disabled="pagarTodo">+ Agregar pago</button>
               </div>
@@ -218,7 +225,12 @@
             </div>
           </div>
 
-          <div class="text-right font-semibold">Total devolucion: {{ money(totalCalculado) }}</div>
+          <div class="text-right font-semibold">
+            Total devolucion: {{ money(totalCalculado) }}
+            <span v-if="totalPagadoVentaSeleccionada > 0" class="ml-3 text-sm font-medium text-slate-600">
+              Maximo pago directo: {{ money(maximoPagoDirecto) }}
+            </span>
+          </div>
         </div>
 
         <div class="flex justify-end gap-2 rounded-b-xl border-t bg-gray-50 px-6 py-4">
@@ -362,6 +374,7 @@ const ventaSearch = ref("");
 const clienteSearch = ref("");
 const ventaBox = ref<HTMLElement | null>(null);
 const pagarTodo = ref(false);
+const totalPagadoVentaSeleccionada = ref(0);
 const form = ref({
   idVenta: 0,
   numeroComprobante: "",
@@ -384,6 +397,7 @@ const detallesCalculados = computed(() => detallesVentaActual.value.filter((deta
 const totalCalculado = computed(() =>
   detallesCalculados.value.reduce((acc, detalle) => acc + detalle.cantidadDevolver * detalle.precioUnitario, 0),
 );
+const maximoPagoDirecto = computed(() => Math.min(totalCalculado.value, totalPagadoVentaSeleccionada.value));
 
 function toInputDate(date: Date) {
   const pad = (value: number) => String(value).padStart(2, "0");
@@ -407,6 +421,7 @@ function money(value: number) {
 }
 
 function nombreCliente(idCliente: number) {
+  if (Number(idCliente) <= 0) return "Consumidor final";
   return clientes.value.find((cliente) => cliente.id === idCliente)?.nombreCompleto || `Cliente #${idCliente}`;
 }
 
@@ -493,6 +508,7 @@ function abrirCrear() {
   clienteSearch.value = "";
   detallesVentaActual.value = [];
   pagarTodo.value = false;
+  totalPagadoVentaSeleccionada.value = 0;
   openModal.value = true;
 }
 
@@ -505,8 +521,11 @@ async function seleccionarVenta(venta: Venta) {
     const ventaDetalle = await obtenerVentaPorId(venta.id);
     form.value.idVenta = ventaDetalle.id;
     form.value.idCliente = ventaDetalle.idCliente;
+    totalPagadoVentaSeleccionada.value = Number(ventaDetalle.totalPagado) || 0;
     ventaSearch.value = ventaSearchLabel(ventaDetalle);
     clienteSearch.value = nombreCliente(ventaDetalle.idCliente);
+    pagarTodo.value = false;
+    form.value.pagos = [];
     detallesVentaActual.value = (ventaDetalle.detalles || [])
       .map((detalle) => ({
         idVentaDetalle: detalle.id ?? 0,
@@ -539,6 +558,9 @@ function limpiarVenta() {
   ventaSearch.value = "";
   clienteSearch.value = "";
   detallesVentaActual.value = [];
+  pagarTodo.value = false;
+  totalPagadoVentaSeleccionada.value = 0;
+  form.value.pagos = [];
 }
 
 function agregarPago() {
@@ -551,7 +573,7 @@ function quitarPago(idx: number) {
 
 function togglePagarTodo() {
   if (pagarTodo.value) {
-    form.value.pagos = [{ idFormaPago: 0, importe: totalCalculado.value, referencia: "Pago total" }];
+    form.value.pagos = [{ idFormaPago: 0, importe: maximoPagoDirecto.value, referencia: "Pago total" }];
     return;
   }
 
@@ -577,7 +599,7 @@ async function guardarDevolucion() {
   if (pagarTodo.value && form.value.pagos.length) {
     const primerPago = form.value.pagos[0];
     if (primerPago) {
-      primerPago.importe = totalCalculado.value;
+      primerPago.importe = maximoPagoDirecto.value;
     }
   }
 
@@ -589,8 +611,8 @@ async function guardarDevolucion() {
 
   const pagosValidos = form.value.pagos.filter((pago) => pago.idFormaPago > 0 && pago.importe > 0);
   const totalPagado = pagosValidos.reduce((acc, pago) => acc + pago.importe, 0);
-  if (totalPagado > totalCalculado.value) {
-    notification.show("Los pagos no pueden superar el total de la devolucion", "error");
+  if (totalPagado > maximoPagoDirecto.value) {
+    notification.show("Los pagos no pueden superar lo efectivamente cobrado ni el total de la devolucion", "error");
     return;
   }
 

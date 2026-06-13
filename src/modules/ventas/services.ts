@@ -1,5 +1,5 @@
 import api from "@/plugins/axios";
-import type { CobrarClienteDTO, CrearVentaDTO, Venta } from "./types";
+import type { AnularVentaDTO, CobrarClienteDTO, CrearVentaDTO, Venta } from "./types";
 
 export const obtenerVentasEntreFechas = async (desde: string, hasta: string): Promise<Venta[]> => {
   const { data } = await api.get("/ventas", { params: { desde, hasta } });
@@ -21,8 +21,8 @@ export const crearVenta = async (dto: CrearVentaDTO): Promise<{ mensaje: string;
   return data;
 };
 
-export const anularVenta = async (id: number): Promise<{ mensaje: string }> => {
-  const { data } = await api.put(`/ventas/anular/${id}`);
+export const anularVenta = async (id: number, dto?: AnularVentaDTO): Promise<{ mensaje: string }> => {
+  const { data } = await api.put(`/ventas/anular/${id}`, dto);
   return data;
 };
 
