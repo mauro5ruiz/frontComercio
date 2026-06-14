@@ -27,6 +27,7 @@ export interface Venta {
   idSucursal: number;
   total: number;
   totalPagado: number;
+  creditoAplicado?: number;
   saldoPendiente: number;
   estado: string | number;
   observaciones?: string;
@@ -43,6 +44,7 @@ export interface CrearVentaDTO {
   observaciones?: string;
   detalles: DetalleVenta[];
   pagos?: VentaPago[];
+  creditoAplicado?: number;
 }
 
 export interface CobrarClienteDTO {

@@ -368,6 +368,18 @@
             <p v-if="esConsumidorFinal" class="mb-2 text-xs text-amber-700">
               Para Consumidor final la venta debe quedar pagada en su totalidad.
             </p>
+            <div v-else-if="creditoDisponibleCliente > 0" class="mb-3 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
+              <div class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                <div>
+                  El cliente tiene saldo a favor por {{ money(creditoDisponibleCliente) }}.
+                  <span v-if="usarCreditoCliente">Se aplicaran {{ money(creditoAplicadoVenta) }} en esta venta.</span>
+                </div>
+                <label class="inline-flex items-center gap-2 font-medium">
+                  <input type="checkbox" v-model="usarCreditoCliente" @change="toggleUsarCreditoCliente" />
+                  Usar saldo a favor
+                </label>
+              </div>
+            </div>
             <div class="space-y-2">
               <div v-for="(p, idx) in form.pagos" :key="idx" class="grid grid-cols-1 md:grid-cols-4 gap-2">
                 <select v-model.number="p.idFormaPago" class="border px-3 py-2 rounded-md">
@@ -402,7 +414,15 @@
             </div>
           </div>
 
-          <div class="text-right font-semibold">Total calculado: {{ money(totalCalculado) }}</div>
+          <div class="text-right font-semibold">
+            <div>Total calculado: {{ money(totalCalculado) }}</div>
+            <div v-if="usarCreditoCliente && creditoAplicadoVenta > 0" class="text-sm font-medium text-emerald-700">
+              Credito aplicado: {{ money(creditoAplicadoVenta) }}
+            </div>
+            <div v-if="!esConsumidorFinal" class="text-sm font-medium text-slate-600">
+              Saldo a cubrir: {{ money(totalAPagarVenta) }}
+            </div>
+          </div>
         </div>
 
         <div class="px-6 py-4 border-t bg-gray-50 rounded-b-xl flex justify-end gap-2">
@@ -625,6 +645,8 @@
           <p><b>Cliente:</b> {{ nombreCliente(ventaDetalle.idCliente) }}</p>
           <p><b>Estado:</b> {{ estaAnulada(ventaDetalle.estado) ? "Anulada" : "Activa" }}</p>
           <p><b>Total:</b> {{ money(ventaDetalle.total) }}</p>
+          <p><b>Pagado:</b> {{ money(ventaDetalle.totalPagado) }}</p>
+          <p v-if="Number(ventaDetalle.creditoAplicado) > 0"><b>Saldo a favor aplicado:</b> {{ money(ventaDetalle.creditoAplicado || 0) }}</p>
           <p><b>Saldo pendiente:</b> {{ money(ventaDetalle.saldoPendiente) }}</p>
         </div>
 
@@ -644,6 +666,9 @@
           </li>
           <li v-if="!(ventaDetalle.pagos || []).length" class="text-sm text-gray-400">Sin pagos</li>
         </ul>
+        <div v-if="Number(ventaDetalle.creditoAplicado) > 0" class="mb-5 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
+          Ajuste de cuenta corriente: saldo a favor aplicado por {{ money(ventaDetalle.creditoAplicado || 0) }}.
+        </div>
 
         <div class="flex justify-end gap-2">
           <button @click="imprimirVenta(ventaDetalle.id)" class="px-4 py-2 rounded bg-slate-700 text-white hover:bg-slate-800">
@@ -658,6 +683,7 @@
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import { obtenerCuentaCorrienteCliente } from "@/modules/clientes/services";
 import { useClientesStore } from "@/modules/clientes/store";
 import type { Cliente } from "@/modules/clientes/types";
 import { useFormasDePagoStore } from "@/modules/formasDePagos/store";
@@ -770,6 +796,8 @@ const anularPagarTodo = ref(false);
 const anularVentaForm = ref({
   pagos: [] as PagoForm[],
 });
+const creditoDisponibleCliente = ref(0);
+const usarCreditoCliente = ref(false);
 
 const pagarTodo = ref(false);
 
@@ -800,6 +828,12 @@ const ventasPaginadas = computed(() => {
 const totalCalculado = computed(() => form.value.detalles.reduce((acc, d) => acc + (Number(d.cantidad) || 0) * (Number(d.precioUnitario) || 0), 0));
 const totalAnulacionVenta = computed(() => Number(ventaAnulacionSeleccionada.value?.total) || 0);
 const totalPagadoAnulacion = computed(() => Number(ventaAnulacionSeleccionada.value?.totalPagado) || 0);
+const creditoAplicadoVenta = computed(() =>
+  usarCreditoCliente.value && !esConsumidorFinal.value
+    ? Math.min(creditoDisponibleCliente.value, totalCalculado.value)
+    : 0,
+);
+const totalAPagarVenta = computed(() => Math.max(0, totalCalculado.value - creditoAplicadoVenta.value));
 const clientesFiltrados = computed(() =>
   clientes.value.filter(c => `${c.nombreCompleto} ${c.nroDocumento || ""}`.toLowerCase().includes(clienteSearch.value.toLowerCase())).slice(0, 8),
 );
@@ -859,6 +893,8 @@ const abrirCrear = () => {
   nuevoDetallePrecioInput.value = "";
   usarPrecioOriginalNuevoDetalle.value = false;
   pagarTodo.value = false;
+  creditoDisponibleCliente.value = 0;
+  usarCreditoCliente.value = false;
   clienteSearch.value = "";
   productoSearch.value = "";
   vendedorSearch.value = "";
@@ -876,11 +912,16 @@ const seleccionarCliente = (cliente: Cliente) => {
   form.value.idCliente = cliente.id;
   clienteSearch.value = `${cliente.nombreCompleto} - Doc ${cliente.nroDocumento || "-"}`;
   clienteOpen.value = false;
+  usarCreditoCliente.value = false;
+  creditoDisponibleCliente.value = 0;
+  void cargarCreditoCliente(cliente.id);
 };
 
 const limpiarCliente = () => {
   form.value.idCliente = 0;
   clienteSearch.value = "";
+  creditoDisponibleCliente.value = 0;
+  usarCreditoCliente.value = false;
 };
 
 const seleccionarFiltroCliente = (cliente: Cliente) => {
@@ -1063,10 +1104,20 @@ const quitarPagoAnulacion = (idx: number) => anularVentaForm.value.pagos.splice(
 
 const togglePagarTodo = () => {
   if (pagarTodo.value) {
-    form.value.pagos = [{ idFormaPago: 0, importe: totalCalculado.value, referencia: "Pago total" }];
+    form.value.pagos = [{ idFormaPago: 0, importe: totalAPagarVenta.value, referencia: "Pago total" }];
     return;
   }
   form.value.pagos = [];
+};
+
+const toggleUsarCreditoCliente = () => {
+  if (!usarCreditoCliente.value) {
+    return;
+  }
+
+  if (pagarTodo.value && form.value.pagos.length) {
+    form.value.pagos[0].importe = totalAPagarVenta.value;
+  }
 };
 
 const toggleAnularPagarTodo = () => {
@@ -1079,7 +1130,7 @@ const toggleAnularPagarTodo = () => {
 };
 
 watch(
-  [esConsumidorFinal, totalCalculado],
+  [esConsumidorFinal, totalCalculado, creditoAplicadoVenta],
   ([sinCliente]) => {
     if (!sinCliente) return;
     pagarTodo.value = true;
@@ -1091,6 +1142,33 @@ watch(
   },
   { immediate: true },
 );
+
+watch(
+  [totalAPagarVenta, pagarTodo],
+  ([totalPendiente, pagarTodoActivo]) => {
+    if (!pagarTodoActivo || !form.value.pagos.length) return;
+    form.value.pagos[0].importe = totalPendiente;
+  },
+);
+
+const cargarCreditoCliente = async (idCliente: number) => {
+  if (Number(idCliente) <= 0) {
+    creditoDisponibleCliente.value = 0;
+    usarCreditoCliente.value = false;
+    return;
+  }
+
+  try {
+    const cuentaCorriente = await obtenerCuentaCorrienteCliente(idCliente, {});
+    creditoDisponibleCliente.value = Math.max(0, Number(cuentaCorriente.creditoDisponible) || 0);
+    if (creditoDisponibleCliente.value <= 0) {
+      usarCreditoCliente.value = false;
+    }
+  } catch {
+    creditoDisponibleCliente.value = 0;
+    usarCreditoCliente.value = false;
+  }
+};
 
 const bloquearDecimal = (event: KeyboardEvent) => {
   if (event.key === "." || event.key === ",") {
@@ -1107,7 +1185,7 @@ const guardarVenta = async () => {
   if (pagarTodo.value && form.value.pagos.length) {
     const primerPago = form.value.pagos[0];
     if (primerPago) {
-      primerPago.importe = totalCalculado.value;
+      primerPago.importe = totalAPagarVenta.value;
     }
   }
 
@@ -1140,8 +1218,14 @@ const guardarVenta = async () => {
 
   const total = form.value.detalles.reduce((acc, d) => acc + d.cantidad * d.precioUnitario, 0);
   const totalPagado = pagos.reduce((acc, p) => acc + p.importe, 0);
-  if (totalPagado > total) {
-    return notification.show("Los pagos no pueden superar el total de la venta", "error");
+  if (totalPagado > totalAPagarVenta.value) {
+    return notification.show("Los pagos no pueden superar el saldo a cubrir luego de aplicar el credito", "error");
+  }
+  if (creditoAplicadoVenta.value > total) {
+    return notification.show("El credito aplicado no puede superar el total de la venta", "error");
+  }
+  if ((totalPagado + creditoAplicadoVenta.value) > total) {
+    return notification.show("La suma de pagos y credito aplicado no puede superar el total de la venta", "error");
   }
   if (esConsumidorFinal.value && totalPagado !== total) {
     return notification.show("Para Consumidor final debes registrar el pago total de la venta", "error");
@@ -1155,6 +1239,7 @@ const guardarVenta = async () => {
     observaciones: form.value.observaciones?.trim() || undefined,
     detalles,
     pagos,
+    creditoAplicado: creditoAplicadoVenta.value > 0 ? creditoAplicadoVenta.value : undefined,
   });
 
   if (!idVenta) return;
@@ -1303,8 +1388,11 @@ const generarHtmlImpresionVenta = (venta: Venta) => {
 
         <table class="totals">
           <tbody>
-            <tr><td>Total venta</td><td class="right">${money(venta.total)}</td></tr>
-            <tr><td>Total pagado</td><td class="right">${money(venta.totalPagado)}</td></tr>
+            <tr><td>Total</td><td class="right">${money(venta.total)}</td></tr>
+            <tr><td>Pagado</td><td class="right">${money(venta.totalPagado)}</td></tr>
+            ${Number(venta.creditoAplicado) > 0
+              ? `<tr><td>Saldo a favor aplicado</td><td class="right">${money(venta.creditoAplicado || 0)}</td></tr>`
+              : ""}
             <tr class="strong"><td>Saldo pendiente</td><td class="right">${money(venta.saldoPendiente)}</td></tr>
           </tbody>
         </table>
