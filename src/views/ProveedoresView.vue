@@ -444,8 +444,11 @@
             <div class="mt-1 text-2xl font-semibold text-slate-900">{{ money(cuentaCorriente?.totalComprado ?? 0) }}</div>
           </div>
           <div class="rounded-lg border bg-slate-50 px-4 py-3">
-            <div class="text-xs uppercase tracking-wide text-slate-500">Total pagado</div>
+            <div class="text-xs uppercase tracking-wide text-slate-500">Pagado real</div>
             <div class="mt-1 text-2xl font-semibold text-slate-900">{{ money(cuentaCorriente?.totalPagado ?? 0) }}</div>
+            <div v-if="totalCreditoAplicadoCuentaCorriente > 0" class="mt-1 text-xs text-emerald-700">
+              + {{ money(totalCreditoAplicadoCuentaCorriente) }} con saldo a favor
+            </div>
           </div>
           <div class="rounded-lg border bg-slate-50 px-4 py-3">
             <div class="text-xs uppercase tracking-wide text-slate-500">Saldo pendiente</div>
@@ -466,16 +469,17 @@
         <div class="rounded-lg border mb-4 overflow-hidden">
           <div class="border-b bg-gray-50 px-4 py-3">
             <h3 class="font-semibold text-gray-800">Compras del proveedor</h3>
-            <p class="text-xs text-gray-500">Vista simple de compras con total, pagado y saldo pendiente.</p>
+            <p class="text-xs text-gray-500">Vista simple de compras con total, pago real, saldo a favor aplicado y saldo pendiente.</p>
           </div>
           <div v-if="comprasCuentaCorriente.length" class="overflow-x-auto">
-            <table class="w-full min-w-[720px]">
+            <table class="w-full min-w-[860px]">
               <thead class="bg-white text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
                 <tr>
                   <th class="px-4 py-3">Fecha</th>
                   <th class="px-4 py-3">Comprobante</th>
                   <th class="px-4 py-3 text-right">Total</th>
-                  <th class="px-4 py-3 text-right">Pagado</th>
+                  <th class="px-4 py-3 text-right">Pagado real</th>
+                  <th class="px-4 py-3 text-right">Saldo a favor aplicado</th>
                   <th class="px-4 py-3 text-right">Pendiente</th>
                   <th class="px-4 py-3 text-right">Accion</th>
                 </tr>
@@ -488,6 +492,7 @@
                   </td>
                   <td class="px-4 py-3 text-sm text-right text-gray-700">{{ money(compra.total) }}</td>
                   <td class="px-4 py-3 text-sm text-right text-emerald-700">{{ money(compra.pagado) }}</td>
+                  <td class="px-4 py-3 text-sm text-right text-sky-700">{{ money(compra.creditoAplicado) }}</td>
                   <td class="px-4 py-3 text-sm text-right font-semibold text-amber-700">{{ money(compra.saldoPendiente) }}</td>
                   <td class="px-4 py-3 text-right">
                     <button
@@ -723,14 +728,18 @@
           <button @click="cerrarDetalleCompraCuentaCorriente" class="px-3 py-2 rounded bg-gray-200 hover:bg-gray-300">Cerrar</button>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3 mb-4">
           <div class="rounded-lg border bg-slate-50 px-4 py-3">
             <div class="text-xs uppercase tracking-wide text-slate-500">Total</div>
             <div class="mt-1 text-xl font-semibold text-slate-900">{{ money(compraDetalleCuentaCorriente.total) }}</div>
           </div>
           <div class="rounded-lg border bg-slate-50 px-4 py-3">
-            <div class="text-xs uppercase tracking-wide text-slate-500">Pagado</div>
+            <div class="text-xs uppercase tracking-wide text-slate-500">Pagado real</div>
             <div class="mt-1 text-xl font-semibold text-emerald-700">{{ money(compraDetalleCuentaCorriente.totalPagado) }}</div>
+          </div>
+          <div v-if="Number(compraDetalleCuentaCorriente.creditoAplicado) > 0" class="rounded-lg border bg-sky-50 px-4 py-3">
+            <div class="text-xs uppercase tracking-wide text-sky-700">Saldo a favor aplicado</div>
+            <div class="mt-1 text-xl font-semibold text-sky-800">{{ money(compraDetalleCuentaCorriente.creditoAplicado || 0) }}</div>
           </div>
           <div class="rounded-lg border bg-slate-50 px-4 py-3">
             <div class="text-xs uppercase tracking-wide text-slate-500">Pendiente</div>
@@ -790,6 +799,9 @@
             </table>
           </div>
           <div v-else class="px-4 py-6 text-sm text-gray-400">No hay pagos registrados para esta compra.</div>
+        </div>
+        <div v-if="Number(compraDetalleCuentaCorriente.creditoAplicado) > 0" class="mt-4 rounded-lg border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900">
+          Esta compra tambien se cancelo con {{ money(compraDetalleCuentaCorriente.creditoAplicado || 0) }} de saldo a favor del proveedor.
         </div>
       </div>
     </div>
@@ -918,9 +930,18 @@ const comprasCuentaCorriente = computed(() =>
       comprobante: movimiento.comprobante,
       total: movimiento.totalCompra ?? movimiento.importe ?? 0,
       pagado: movimiento.pagadoCompra ?? 0,
+      creditoAplicado: Math.max(
+        0,
+        (movimiento.totalCompra ?? movimiento.importe ?? 0)
+          - (movimiento.pagadoCompra ?? 0)
+          - (movimiento.saldoPendienteCompra ?? 0),
+      ),
       saldoPendiente: movimiento.saldoPendienteCompra ?? 0
     }))
     .filter((compra) => compra.idCompra > 0)
+);
+const totalCreditoAplicadoCuentaCorriente = computed(() =>
+  comprasCuentaCorriente.value.reduce((acc, compra) => acc + compra.creditoAplicado, 0),
 );
 const totalPaginasCuentaCorriente = computed(() =>
   Math.max(1, Math.ceil(comprasCuentaCorriente.value.length / cuentaCorrientePageSize))

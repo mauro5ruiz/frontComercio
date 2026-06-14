@@ -190,7 +190,7 @@
             <div ref="proveedorBox" class="relative">
               <label class="text-sm text-gray-700">Proveedor *</label>
               <div class="relative">
-                <input v-model="proveedorSearch" class="w-full border px-3 py-2 rounded-md pr-8" placeholder="Buscar proveedor" @focus="proveedorOpen = true" />
+                <input v-model="proveedorSearch" class="w-full border px-3 py-2 rounded-md pr-8" placeholder="Buscar proveedor" @focus="proveedorOpen = true" @blur="resolverProveedorDesdeBusqueda" />
                 <button v-if="form.idProveedor > 0 || proveedorSearch" type="button" class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700 text-sm" @click="limpiarProveedor">x</button>
               </div>
               <div v-if="proveedorOpen && proveedoresFiltrados.length" class="absolute z-20 w-full mt-1 bg-white border rounded-md shadow max-h-44 overflow-y-auto">
@@ -359,6 +359,18 @@
                 <button @click="agregarPago" class="text-blue-600 text-sm" :disabled="pagarTodo">+ Agregar pago</button>
               </div>
             </div>
+            <div v-if="creditoDisponibleProveedor > 0" class="mb-3 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
+              <div class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                <div>
+                  El proveedor tiene saldo a favor por {{ money(creditoDisponibleProveedor) }}.
+                  <span v-if="usarCreditoProveedor">Se aplicaran {{ money(creditoAplicadoCompra) }} en esta compra.</span>
+                </div>
+                <label class="inline-flex items-center gap-2 font-medium">
+                  <input type="checkbox" v-model="usarCreditoProveedor" @change="toggleUsarCreditoProveedor" />
+                  Usar saldo a favor
+                </label>
+              </div>
+            </div>
             <div class="space-y-2">
               <div v-for="(p, idx) in form.pagos" :key="idx" class="grid grid-cols-1 md:grid-cols-4 gap-2">
                 <select v-model.number="p.idFormaPago" class="border px-3 py-2 rounded-md">
@@ -388,7 +400,13 @@
           </div>
 
           <div class="text-right font-semibold">
-            Total calculado: {{ money(totalCalculado) }}
+            <div>Total calculado: {{ money(totalCalculado) }}</div>
+            <div v-if="usarCreditoProveedor && creditoAplicadoCompra > 0" class="text-sm font-medium text-emerald-700">
+              Credito aplicado: {{ money(creditoAplicadoCompra) }}
+            </div>
+            <div class="text-sm font-medium text-slate-600">
+              Saldo a pagar: {{ money(totalAPagarCompra) }}
+            </div>
           </div>
         </div>
 
@@ -408,6 +426,8 @@
           <p><b>Proveedor:</b> {{ nombreProveedor(compraDetalle.idProveedor) }}</p>
           <p><b>Estado:</b> {{ compraDetalle.estado === 2 ? "Anulada" : "Activa" }}</p>
           <p><b>Total:</b> {{ money(compraDetalle.total) }}</p>
+          <p><b>Pagado:</b> {{ money(compraDetalle.totalPagado) }}</p>
+          <p v-if="Number(compraDetalle.creditoAplicado) > 0"><b>Saldo a favor aplicado:</b> {{ money(compraDetalle.creditoAplicado || 0) }}</p>
           <p><b>Saldo pendiente:</b> {{ money(compraDetalle.saldoPendiente) }}</p>
         </div>
         <h3 class="font-semibold mb-1">Detalles</h3>
@@ -423,6 +443,9 @@
           </li>
           <li v-if="!(compraDetalle.pagos?.length)" class="text-sm text-gray-400">Sin pagos registrados</li>
         </ul>
+        <div v-if="Number(compraDetalle.creditoAplicado) > 0" class="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
+          Ajuste de cuenta corriente: saldo a favor aplicado por {{ money(compraDetalle.creditoAplicado || 0) }}.
+        </div>
       </div>
     </div>
 
@@ -533,12 +556,13 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useComprasStore } from "@/modules/compras/store";
 import type { Compra } from "@/modules/compras/types";
 import { useFormasDePagoStore } from "@/modules/formasDePagos/store";
 import { useProductosStore } from "@/modules/productos/store";
 import type { Producto } from "@/modules/productos/types";
+import { obtenerCuentaCorrienteProveedor } from "@/modules/proveedores/services";
 import { useProveedoresStore } from "@/modules/proveedores/store";
 import type { Proveedor } from "@/modules/proveedores/types";
 import { useNotificationStore } from "@/stores/notificaciones";
@@ -604,6 +628,8 @@ const nuevoDetalle = ref({
 });
 
 const pagarTodo = ref(false);
+const creditoDisponibleProveedor = ref(0);
+const usarCreditoProveedor = ref(false);
 const pagoCompraForm = ref({
   idFormaPago: 0,
   importe: 0
@@ -645,6 +671,8 @@ const comprasPaginadas = computed(() => {
   return comprasFiltradas.value.slice(start, start + pageSize);
 });
 const totalCalculado = computed(() => form.value.detalles.reduce((acc, d) => acc + (Number(d.cantidad) || 0) * (Number(d.precioUnitario) || 0), 0));
+const creditoAplicadoCompra = computed(() => Math.min(creditoDisponibleProveedor.value, totalCalculado.value));
+const totalAPagarCompra = computed(() => Math.max(0, totalCalculado.value - (usarCreditoProveedor.value ? creditoAplicadoCompra.value : 0)));
 const proveedoresFiltrados = computed(() => proveedores.value.filter(p => p.razonSocial.toLowerCase().includes(proveedorSearch.value.toLowerCase())).slice(0, 8));
 const proveedoresFiltroBusqueda = computed(() =>
   proveedores.value.filter(p => p.razonSocial.toLowerCase().includes(filtroProveedorSearch.value.toLowerCase())).slice(0, 8),
@@ -685,6 +713,8 @@ const abrirCrear = () => {
   };
   nuevoDetalle.value = { idProducto: 0, cantidad: 1, precioUnitario: 0 };
   pagarTodo.value = false;
+  creditoDisponibleProveedor.value = 0;
+  usarCreditoProveedor.value = false;
   proveedorSearch.value = "";
   productoSearch.value = "";
   proveedorOpen.value = false;
@@ -714,11 +744,42 @@ const seleccionarProveedor = (proveedor: Proveedor) => {
   form.value.idProveedor = proveedor.id;
   proveedorSearch.value = proveedor.razonSocial;
   proveedorOpen.value = false;
+  usarCreditoProveedor.value = false;
+  creditoDisponibleProveedor.value = 0;
+  void cargarCreditoProveedor(proveedor.id);
+};
+
+const resolverProveedorDesdeBusqueda = () => {
+  window.setTimeout(() => {
+    if (form.value.idProveedor > 0 || !proveedorSearch.value.trim()) {
+      return;
+    }
+
+    const termino = proveedorSearch.value.trim().toLowerCase();
+    const coincidenciasExactas = proveedores.value.filter(
+      (proveedor) => proveedor.razonSocial.trim().toLowerCase() === termino,
+    );
+
+    if (coincidenciasExactas.length === 1) {
+      seleccionarProveedor(coincidenciasExactas[0]!);
+      return;
+    }
+
+    const coincidencias = proveedores.value.filter((proveedor) =>
+      proveedor.razonSocial.toLowerCase().includes(termino),
+    );
+
+    if (coincidencias.length === 1) {
+      seleccionarProveedor(coincidencias[0]!);
+    }
+  }, 120);
 };
 
 const limpiarProveedor = () => {
   form.value.idProveedor = 0;
   proveedorSearch.value = "";
+  creditoDisponibleProveedor.value = 0;
+  usarCreditoProveedor.value = false;
 };
 
 const seleccionarFiltroProveedor = (proveedor: Proveedor) => {
@@ -780,10 +841,66 @@ const quitarPago = (idx: number) => form.value.pagos.splice(idx, 1);
 
 const togglePagarTodo = () => {
   if (pagarTodo.value) {
-    form.value.pagos = [{ idFormaPago: 0, importe: totalCalculado.value, referencia: "Pago total" }];
+    form.value.pagos = [{ idFormaPago: 0, importe: totalAPagarCompra.value, referencia: "Pago total" }];
     return;
   }
   form.value.pagos = [];
+};
+
+const toggleUsarCreditoProveedor = () => {
+  if (!usarCreditoProveedor.value) {
+    return;
+  }
+
+  if (pagarTodo.value && form.value.pagos.length) {
+    form.value.pagos[0].importe = totalAPagarCompra.value;
+  }
+};
+
+watch(
+  [totalAPagarCompra, pagarTodo],
+  ([totalPendiente, pagarTodoActivo]) => {
+    if (!pagarTodoActivo || !form.value.pagos.length) return;
+    form.value.pagos[0].importe = totalPendiente;
+  },
+);
+
+watch(
+  () => form.value.idProveedor,
+  (idProveedorActual, idProveedorAnterior) => {
+    if (!openModal.value || idProveedorActual === idProveedorAnterior) return;
+
+    if (Number(idProveedorActual) <= 0) {
+      creditoDisponibleProveedor.value = 0;
+      usarCreditoProveedor.value = false;
+      return;
+    }
+
+    void cargarCreditoProveedor(Number(idProveedorActual));
+  },
+);
+
+const cargarCreditoProveedor = async (idProveedor: number) => {
+  if (Number(idProveedor) <= 0) {
+    creditoDisponibleProveedor.value = 0;
+    usarCreditoProveedor.value = false;
+    return;
+  }
+
+  try {
+    const cuentaCorriente = await obtenerCuentaCorrienteProveedor(idProveedor, {
+      desde: desde.value || undefined,
+      hasta: hasta.value || undefined,
+    });
+    const creditoDisponible = Number(cuentaCorriente?.creditoDisponible ?? 0);
+    creditoDisponibleProveedor.value = Math.max(0, creditoDisponible);
+    if (creditoDisponibleProveedor.value <= 0) {
+      usarCreditoProveedor.value = false;
+    }
+  } catch {
+    creditoDisponibleProveedor.value = 0;
+    usarCreditoProveedor.value = false;
+  }
 };
 
 const bloquearDecimal = (event: KeyboardEvent) => {
@@ -810,7 +927,7 @@ const guardarCompra = async () => {
   if (pagarTodo.value && form.value.pagos.length) {
     const primerPago = form.value.pagos[0];
     if (primerPago) {
-      primerPago.importe = totalCalculado.value;
+      primerPago.importe = totalAPagarCompra.value;
     }
   }
 
@@ -839,8 +956,14 @@ const guardarCompra = async () => {
 
   const total = form.value.detalles.reduce((acc, d) => acc + d.cantidad * d.precioUnitario, 0);
   const totalPagado = pagos.reduce((acc, p) => acc + p.importe, 0);
-  if (totalPagado > total) {
-    return notification.show("Los pagos no pueden superar el total de la compra", "error");
+  if (totalPagado > totalAPagarCompra.value) {
+    return notification.show("Los pagos no pueden superar el saldo a pagar luego de aplicar el credito", "error");
+  }
+  if (creditoAplicadoCompra.value > total) {
+    return notification.show("El credito aplicado no puede superar el total de la compra", "error");
+  }
+  if ((totalPagado + (usarCreditoProveedor.value ? creditoAplicadoCompra.value : 0)) > total) {
+    return notification.show("La suma de pagos y credito aplicado no puede superar el total de la compra", "error");
   }
 
   const idCompra = await comprasStore.addCompra({
@@ -850,6 +973,7 @@ const guardarCompra = async () => {
     observaciones: form.value.observaciones?.trim() || undefined,
     detalles,
     pagos,
+    creditoAplicado: usarCreditoProveedor.value && creditoAplicadoCompra.value > 0 ? creditoAplicadoCompra.value : undefined,
   });
 
   if (!idCompra) return;

@@ -26,6 +26,7 @@ export interface Compra {
   idSucursal: number;
   total: number;
   totalPagado: number;
+  creditoAplicado?: number;
   saldoPendiente: number;
   estado: number;
   observaciones?: string;
@@ -41,6 +42,7 @@ export interface CrearCompraDTO {
   observaciones?: string;
   detalles: DetalleCompra[];
   pagos?: CompraPago[];
+  creditoAplicado?: number;
 }
 
 export interface PagarCompraDTO {

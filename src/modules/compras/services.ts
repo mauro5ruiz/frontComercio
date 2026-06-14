@@ -45,6 +45,7 @@ function normalizarCompra(payload: any): Compra {
     idSucursal: payload.idSucursal ?? payload.IdSucursal ?? 0,
     total: payload.total ?? payload.Total ?? 0,
     totalPagado: payload.totalPagado ?? payload.TotalPagado ?? 0,
+    creditoAplicado: payload.creditoAplicado ?? payload.CreditoAplicado ?? 0,
     saldoPendiente: payload.saldoPendiente ?? payload.SaldoPendiente ?? 0,
     estado: payload.estado ?? payload.Estado ?? 0,
     observaciones: payload.observaciones ?? payload.Observaciones,
